@@ -1,0 +1,345 @@
+<script lang="ts" module>
+  // ---------- shared types ----------
+  //
+  // The detail JSON shape is the one returned by `GET api/traces/:id`.
+  // We keep it loose (Record<string, any>) because the actual tab
+  // bodies (conversation / body / headers / events / session / replay)
+  // are rendered by other components, each of which knows what subset
+  // of the trace shape it consumes.
+
+  export type TraceRow = {
+    id: string;
+    method?: string;
+    path?: string;
+    status?: number | null;
+    ts_start?: string | null;
+    ts_end?: string | null;
+    model?: string | null;
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    key_hash?: string | null;
+    parent_id?: string | null;
+    [k: string]: any;
+  };
+
+  export type TraceBlob = {
+    req?: { headers?: Record<string, string>; body?: any; body_b64?: string };
+    resp?: {
+      headers?: Record<string, string>;
+      body?: any;
+      body_b64?: string;
+      events?: Array<{ t_delta_ms?: number; event?: string; data?: any }>;
+    };
+  };
+
+  export type TraceDetail = { row: TraceRow; trace?: TraceBlob };
+
+  export type DetailTab = 'conversation' | 'overview' | 'headers' | 'body' | 'events' | 'session' | 'replay';
+</script>
+
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+
+  // ---------- props ----------
+  //
+  // - `traceId`: the currently-selected trace id, or null when nothing
+  //   is selected. When it changes, the panel fetches `api/traces/:id`,
+  //   updates the location hash to `#/traces/:id`, and resets the tab
+  //   to 'conversation' (matches selectTrace() in the legacy viewer).
+  // - `authFetch`: dependency-injected fetch wrapper that handles the
+  //   bearer token + 401 modal. Signature mirrors window.fetch on a
+  //   relative `api/...` path. Invented for the port.
+  // - `tabBody`: a Snippet that renders the currently-active tab's
+  //   contents. The shell knows about the *tab list* but not the
+  //   per-tab markup; renderDetailTab() lives in sibling components
+  //   (ConversationView, BodyView, etc.) and is composed in by App.svelte.
+  //
+  // Behavioral fidelity:
+  //   - tab list = ['conversation','overview','headers','body',
+  //                 events.length? 'events':null,'session',
+  //                 events.length? 'replay':null].filter(Boolean)
+  //   - default tab = 'conversation'
+  //   - hash = `#/traces/${id}` (replaceState, not pushState, matches
+  //     the legacy behavior so the back button doesn't pile up history)
+  //   - clicking the parent link calls onSelect(parent_id) so the
+  //     parent can drive the selection back into this same panel.
+
+  type Props = {
+    traceId: string | null;
+    authFetch: (path: string, opts?: RequestInit) => Promise<Response>;
+    onSelect?: (id: string) => void;
+    tabBody?: Snippet<[{ detail: TraceDetail; tab: DetailTab }]>;
+  };
+
+  let { traceId, authFetch, onSelect, tabBody }: Props = $props();
+
+  // ---------- internal state ----------
+
+  let detail = $state<TraceDetail | null>(null);
+  let detailTab = $state<DetailTab>('conversation');
+  let loadState = $state<'idle' | 'loading' | 'error'>('idle');
+  let loadError = $state<string>('');
+
+  // ---------- selectTrace: fetch + hash + reset ----------
+  //
+  // Mirrors selectTrace() from the legacy viewer. We trigger on every
+  // traceId change rather than exposing it as an imperative function;
+  // the parent updates `traceId` (from a list-row click or a hash
+  // route change), and this effect handles the rest.
+
+  $effect(() => {
+    const id = traceId;
+    detail = null;
+    detailTab = 'conversation';
+    if (!id) {
+      loadState = 'idle';
+      return;
+    }
+    // hash mirror — only replace when it isn't already the right hash,
+    // to avoid loops with a hash-listening router upstream.
+    if (typeof window !== 'undefined' && window.location.hash !== `#/traces/${id}`) {
+      history.replaceState(null, '', `#/traces/${id}`);
+    }
+    loadState = 'loading';
+    loadError = '';
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await authFetch(`api/traces/${id}`);
+        if (!r.ok) throw new Error(String(r.status));
+        const j = (await r.json()) as TraceDetail;
+        if (cancelled) return;
+        detail = j;
+        loadState = 'idle';
+      } catch (e: any) {
+        if (cancelled) return;
+        loadError = e?.message ?? String(e);
+        loadState = 'error';
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  // ---------- derived: tab list + meta ----------
+  //
+  // events.length triggers the 'events' and 'replay' tabs — same
+  // filter() pipeline as the legacy renderDetail().
+
+  const tabs = $derived.by<DetailTab[]>(() => {
+    if (!detail) return [];
+    const events = detail.trace?.resp?.events ?? [];
+    const base: (DetailTab | null)[] = [
+      'conversation',
+      'overview',
+      'headers',
+      'body',
+      events.length ? 'events' : null,
+      'session',
+      events.length ? 'replay' : null,
+    ];
+    return base.filter((t): t is DetailTab => !!t);
+  });
+
+  const durMs = $derived.by<number | null>(() => {
+    const row = detail?.row;
+    if (!row?.ts_start || !row?.ts_end) return null;
+    return new Date(row.ts_end).getTime() - new Date(row.ts_start).getTime();
+  });
+
+  // ---------- formatting helpers (1:1 with legacy) ----------
+
+  function shortTs(ts: string | null | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return (
+      d.toLocaleTimeString('en-GB', { hour12: false }) +
+      '.' +
+      String(d.getMilliseconds()).padStart(3, '0')
+    );
+  }
+
+  function fmtMs(ms: number | null): string {
+    if (ms == null) return '—';
+    if (ms < 1000) return ms + 'ms';
+    return (ms / 1000).toFixed(2) + 's';
+  }
+
+  function statusClass(s: number | null | undefined): string {
+    if (!s || s < 100) return 'st-x';
+    const b = Math.floor(s / 100);
+    return b === 2 ? 'st-2' : b === 4 ? 'st-4' : b === 5 ? 'st-5' : 'st-x';
+  }
+
+  function shortId(id: string | null | undefined): string {
+    return id ? id.slice(-8) : '';
+  }
+
+  function selectTab(t: DetailTab) {
+    detailTab = t;
+  }
+
+  function clickParent(e: MouseEvent, parentId: string) {
+    // Let the parent route via onSelect rather than a raw hash jump,
+    // so the in-memory state and the hash stay in lockstep.
+    if (onSelect) {
+      e.preventDefault();
+      onSelect(parentId);
+    }
+  }
+</script>
+
+<div id="detail">
+  {#if loadState === 'loading' && !detail}
+    <div class="empty">loading {traceId ?? ''}</div>
+  {:else if loadState === 'error'}
+    <div class="empty">load failed: {loadError}</div>
+  {:else if !detail}
+    <div class="empty">select a trace</div>
+  {:else}
+    {@const row = detail.row}
+    <div class="head">
+      <div class="title">
+        <span class="method">{row.method || 'POST'}</span>
+        <span class="path">{row.path || ''}</span>
+        <span class="status {statusClass(row.status)}">{row.status ?? '—'}</span>
+        <span class="id">{row.id}</span>
+      </div>
+      <div class="meta">
+        <span><b>{shortTs(row.ts_start)}</b></span>
+        <span>dur <b>{fmtMs(durMs)}</b></span>
+        <span>model <b>{row.model || '—'}</b></span>
+        <span>tokens <b>{row.prompt_tokens ?? '—'} / {row.completion_tokens ?? '—'}</b></span>
+        <span>key <b>{(row.key_hash || '').slice(0, 8) || '—'}</b></span>
+        {#if row.parent_id}
+          <span>
+            parent
+            <b>
+              <a
+                href={`#/traces/${row.parent_id}`}
+                onclick={(e) => clickParent(e, row.parent_id!)}
+              >{shortId(row.parent_id)}</a>
+            </b>
+          </span>
+        {/if}
+      </div>
+    </div>
+    <div class="tabs">
+      {#each tabs as t (t)}
+        <a
+          data-tab={t}
+          class={t === detailTab ? 'active' : ''}
+          onclick={() => selectTab(t)}
+        >{t}</a>
+      {/each}
+    </div>
+    <div class="body" id="detail-panel">
+      {#if tabBody}
+        {@render tabBody({ detail, tab: detailTab })}
+      {/if}
+    </div>
+  {/if}
+</div>
+
+<style>
+  /* ---------- detail panel shell ----------
+     Ported 1:1 from #detail / #detail .head / #detail .tabs in
+     internal/viewer/static/index.html, with the legacy palette tokens
+     remapped to the new app.css zinc palette:
+       --muted     -> --fg-muted
+       --muted-2   -> --fg-dim
+       --line      -> --border
+       --panel     -> --bg-elev
+       --r         -> --radius
+       --good/bad  -> --ok / --err
+  */
+
+  #detail {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  #detail .empty {
+    color: var(--fg-muted);
+    padding: 64px 32px;
+    text-align: center;
+    font-size: 12px;
+  }
+
+  #detail .head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  #detail .head .title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+
+  #detail .head .method { color: var(--fg-muted); }
+  #detail .head .path   { color: var(--fg); }
+  #detail .head .status { font-weight: 600; }
+  #detail .head .id {
+    color: var(--fg-dim);
+    font-size: 11px;
+    margin-left: auto;
+  }
+
+  #detail .head .meta {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    color: var(--fg-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  #detail .head .meta span b {
+    color: var(--fg-dim);
+    font-weight: 500;
+  }
+
+  #detail .tabs {
+    display: flex;
+    padding: 0 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 65px;
+    z-index: 1;
+  }
+  #detail .tabs a {
+    padding: 8px 14px;
+    color: var(--fg-muted);
+    border-bottom: 1px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  #detail .tabs a:hover { color: var(--fg-dim); }
+  #detail .tabs a.active {
+    color: var(--fg);
+    border-bottom-color: var(--accent);
+  }
+
+  #detail .body { padding: 16px; }
+
+  /* status color classes (also defined globally in the list view; kept
+     here scoped so the detail header colors work in isolation). */
+  .st-2 { color: var(--ok); }
+  .st-4 { color: var(--warn); }
+  .st-5 { color: var(--err); }
+  .st-x { color: var(--fg-muted); }
+</style>
