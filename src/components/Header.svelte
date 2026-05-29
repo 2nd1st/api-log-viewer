@@ -1,40 +1,30 @@
 <script lang="ts">
   // Header / nav strip.
   //
-  // Ported 1:1 from internal/viewer/static/index.html (the <header> block
-  // around lines 409-423 plus the matching CSS at lines 38-66). Includes:
-  //   - brand text "api-log/viewer" with a muted slash
-  //   - hash-based nav tabs (Traces, Healthz)
-  //   - status indicator (connecting…, may carry .bad or .warn class)
-  //   - refresh icon button
-  //   - auth icon button (opens the admin-token modal in the parent)
+  // The brand text "api-log/viewer" stays. Nav tabs are now:
+  //   - Dashboard  (#/dashboard)  — default home view
+  //   - Traces     (#/traces)     — list + detail surface
   //
-  // The original was string-driven (querySelectorAll('#nav a') + classList
-  // toggles). In the Svelte port the parent owns `view` (so routing /
-  // list-loading code can react to it via $effect), the status text +
-  // level, and the click callbacks. The brand string, nav labels, hash
-  // targets (#/traces, #/healthz) and SVG icons are reproduced verbatim
-  // so behavior is indistinguishable from the original.
+  // The legacy Healthz tab is gone; the operator data is absorbed into
+  // the Dashboard's "internal" section (see Dashboard.svelte).
   //
-  // Note on routing: the original wires hash changes via
-  // window.addEventListener('hashchange', applyHash). That global wiring
-  // lives at the App.svelte level — this component just renders <a> tags
-  // that point at #/traces and #/healthz the same way the original did,
-  // and reflects the current `view` value via the .active class.
+  // The parent owns `view`, the status text + level, and the click
+  // callbacks. The <a href="#/..."> tags rely on the App.svelte
+  // hashchange listener to drive the actual route change.
 
-  export type View = 'traces' | 'healthz';
+  export type View = 'dashboard' | 'traces';
   export type StatusLevel = '' | 'bad' | 'warn';
 
   interface Props {
     /** Currently active view; drives which nav tab gets .active. */
     view: View;
-    /** Status text shown to the right of the nav. Original default: "connecting…". */
+    /** Status text shown to the right of the nav. */
     statusText?: string;
-    /** Status severity → maps to .bad / .warn CSS classes. Empty = neutral. */
+    /** Status severity → maps to .bad / .warn CSS classes. */
     statusLevel?: StatusLevel;
-    /** Refresh button click; original wiring was `#refresh` → reload. */
+    /** Refresh button click. */
     onRefresh?: () => void;
-    /** Auth button click; original wiring was `#auth-btn` → showAuthModal. */
+    /** Auth button click. */
     onAuth?: () => void;
   }
 
@@ -51,15 +41,15 @@
   <span class="brand">api-log<span class="slash">/</span>viewer</span>
   <nav>
     <a
+      data-view="dashboard"
+      href="#/dashboard"
+      class:active={view === 'dashboard'}
+    >Dashboard</a>
+    <a
       data-view="traces"
       href="#/traces"
       class:active={view === 'traces'}
     >Traces</a>
-    <a
-      data-view="healthz"
-      href="#/healthz"
-      class:active={view === 'healthz'}
-    >Healthz</a>
   </nav>
   <div class="spacer"></div>
   <span
@@ -86,17 +76,14 @@
 </header>
 
 <style>
-  /* Mirrors the original "header" CSS block from index.html lines 38-66,
-     translated to the new variable names defined in app.css:
+  /* Mirrors the original header CSS, translated to app.css palette:
        --line       -> --border
        --muted      -> --fg-muted
-       --fg-dim     -> --fg-dim (unchanged)
+       --fg-dim     -> --fg-dim
        --panel      -> --bg-elev
        --bad        -> --err
        --warn       -> --warn
-     Layout numbers (38px height, 16px padding, 20px gap, 14px icons,
-     12px brand/nav font, 11px status font, 12px nav padding) are kept
-     identical so the strip lines up the same way at the same density. */
+  */
   header {
     display: flex;
     align-items: center;
