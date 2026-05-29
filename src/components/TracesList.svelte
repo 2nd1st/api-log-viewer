@@ -261,9 +261,98 @@
     void reloadKey;
     loadTraces({ reset: reloadResets });
   });
+
+  // ---------- auto-refresh ----------
+  //
+  // Operator-controlled polling. Stored as a label ('off' | '5s' | '10s'
+  // | '30s' | '60s' | '5m') so the persisted value is self-describing.
+  // We intentionally only auto-refresh page 1 (cursorStack empty) — pol-
+  // ling deep into a paginated stream would scramble the page boundary
+  // under the operator. When the user has paged forward, the timer is
+  // effectively dormant until they return to page 1.
+  //
+  // UX guard: if the user is focused inside the table (e.g. a row has
+  // keyboard focus) or has scrolled within the last 2s, skip the tick.
+  // This is best-effort — we resume on the next tick automatically.
+
+  type RefreshOpt = 'off' | '5s' | '10s' | '30s' | '60s' | '5m';
+  const REFRESH_SECONDS: Record<RefreshOpt, number> = {
+    off: 0,
+    '5s': 5,
+    '10s': 10,
+    '30s': 30,
+    '60s': 60,
+    '5m': 300,
+  };
+  const REFRESH_OPTIONS: RefreshOpt[] = ['off', '5s', '10s', '30s', '60s', '5m'];
+
+  function readPersistedRefresh(): RefreshOpt {
+    try {
+      const v = localStorage.getItem('apilog.traces.autorefresh');
+      if (v && v in REFRESH_SECONDS) return v as RefreshOpt;
+    } catch {
+      // localStorage may throw in private mode / sandboxed iframes —
+      // silently fall back to default.
+    }
+    return 'off';
+  }
+
+  let refreshOpt = $state<RefreshOpt>(readPersistedRefresh());
+  let lastScrollAt = $state<number>(0);
+  let tableEl = $state<HTMLTableElement | null>(null);
+
+  function onRefreshChange(e: Event) {
+    const v = (e.currentTarget as HTMLSelectElement).value as RefreshOpt;
+    refreshOpt = v;
+    try {
+      localStorage.setItem('apilog.traces.autorefresh', v);
+    } catch {
+      // see readPersistedRefresh()
+    }
+  }
+
+  function onScroll() {
+    lastScrollAt = Date.now();
+  }
+
+  function shouldSkipTick(): boolean {
+    // Skip while paginated past page 1 — see comment above.
+    if (cursorStack.length > 0) return true;
+    // Skip while a row inside this table has focus.
+    if (tableEl && tableEl.contains(document.activeElement)) return true;
+    // Skip if the user scrolled within the last 2s.
+    if (Date.now() - lastScrollAt < 2000) return true;
+    return false;
+  }
+
+  $effect(() => {
+    const secs = REFRESH_SECONDS[refreshOpt];
+    if (!secs) return;
+    const id = setInterval(() => {
+      if (shouldSkipTick()) return;
+      loadTraces({ reset: true });
+    }, secs * 1000);
+    return () => clearInterval(id);
+  });
 </script>
 
-<table>
+<svelte:window onscroll={onScroll} />
+
+<div class="toolbar">
+  <label class="ar">
+    <span class="ar-label">auto-refresh</span>
+    <select value={refreshOpt} onchange={onRefreshChange}>
+      {#each REFRESH_OPTIONS as opt (opt)}
+        <option value={opt}>{opt}</option>
+      {/each}
+    </select>
+    <span class="ar-state" title={refreshOpt === 'off' ? 'auto-refresh off' : `refreshing every ${REFRESH_SECONDS[refreshOpt]}s`}>
+      {refreshOpt === 'off' ? '○ off' : `↻ ${refreshOpt}`}
+    </span>
+  </label>
+</div>
+
+<table bind:this={tableEl} onwheel={onScroll} ontouchmove={onScroll}>
   <thead>
     <tr>
       <th>time</th>
@@ -354,4 +443,39 @@
   td.s.st-4 { color: var(--warn); }
   td.s.st-5 { color: var(--err); }
   td.s.st-x { color: var(--fg-muted); }
+
+  /* Thin auto-refresh toolbar above the table. Restrained — monospace,
+     dim labels, the select inherits the global input styles. */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--gap-2);
+    padding: var(--gap-1) var(--gap-2);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elev);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .ar {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-2);
+    color: var(--fg-dim);
+  }
+  .ar-label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+  }
+  .ar select {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 1px 4px;
+  }
+  .ar-state {
+    color: var(--fg-muted);
+    min-width: 3.5em;
+    text-align: right;
+  }
 </style>

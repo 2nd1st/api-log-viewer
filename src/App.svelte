@@ -5,19 +5,21 @@
   // datalist suggestion sets, status banner text/kind, auth-modal
   // visibility, pager state) and wires every sibling component together.
   //
-  // Routing (as of the dashboard switch):
-  //   #/                  -> Dashboard (default)
-  //   #/dashboard         -> Dashboard
+  // Routing (as of the landing switch, 2026-05-30):
+  //   #/                  -> Landing (default)
+  //   #/landing           -> Landing
+  //   #/dashboard         -> legacy alias, console.warn + replaceState
+  //                          to #/landing
   //   #/traces            -> traces list + detail panel
   //   #/traces/<id>       -> traces list + that trace selected
-  //   anything else       -> console.warn + fall back to #/dashboard
+  //   anything else       -> console.warn + fall back to #/landing
   //
   // The boot $effect calls applyHash(); if no hash on first load we
-  // explicitly set #/dashboard so the URL matches the rendered view.
+  // explicitly set #/landing so the URL matches the rendered view.
   //
   // What this file is NOT responsible for (lives in sibling components):
   //   - Header markup & CSS                     (components/Header.svelte)
-  //   - Default home page                        (components/Dashboard.svelte)
+  //   - Default home page                        (components/Landing.svelte)
   //   - Filter sidebar + datalists              (components/FilterSidebar.svelte)
   //   - Traces / sessions mode toggle           (components/ListModeToggle.svelte)
   //   - Traces list table + pager methods       (components/TracesList.svelte)
@@ -40,19 +42,18 @@
   import TracesList from './components/TracesList.svelte';
   import DetailPanel from './components/DetailPanel.svelte';
   import type { TabBodyCtx } from './components/DetailPanel.svelte';
-  import Dashboard from './components/Dashboard.svelte';
+  import Landing from './components/Landing.svelte';
   import AuthModal from './components/AuthModal.svelte';
 
   import ConversationTab from './components/tabs/ConversationTab.svelte';
   import OverviewTab from './components/tabs/OverviewTab.svelte';
-  import HeadersTab from './components/tabs/HeadersTab.svelte';
-  import BodyTab from './components/tabs/BodyTab.svelte';
+  import RawTab from './components/tabs/RawTab.svelte';
 
   // ---------- top-level state ----------
 
-  type View = 'dashboard' | 'traces';
+  type View = 'landing' | 'traces';
 
-  let view = $state<View>('dashboard');
+  let view = $state<View>('landing');
 
   let selectedId = $state<string | null>(null);
 
@@ -82,7 +83,7 @@
   let authModalOpen = $state<boolean>(false);
 
   let tracesReloadKey = $state<number>(0);
-  let dashboardReloadKey = $state<number>(0);
+  let landingReloadKey = $state<number>(0);
 
   let pagerPrevDisabled = $state<boolean>(true);
   let pagerNextDisabled = $state<boolean>(true);
@@ -98,24 +99,35 @@
   // ---------- hash routing ----------
   //
   // KNOWN_VIEWS is the allowlist; anything else logs a warn and falls
-  // back to 'dashboard'. The legacy #/healthz route is gone — the dashboard
-  // absorbed its content via Dashboard.svelte's "internal" section.
-  const KNOWN_VIEWS: readonly View[] = ['dashboard', 'traces'];
+  // back to 'landing'. The legacy #/healthz route is gone — the landing
+  // page absorbed its content via Landing.svelte's "internal" section.
+  //
+  // #/dashboard is a legacy alias for #/landing — kept routable so old
+  // bookmarks still land somewhere, with a console.warn + replaceState
+  // to the canonical route.
+  const KNOWN_VIEWS: readonly View[] = ['landing', 'traces'];
 
   function applyHash(): void {
     const h = window.location.hash;
-    // Empty hash / `#` / `#/` all map to dashboard.
+    // Empty hash / `#` / `#/` all map to landing.
     if (!h || h === '#' || h === '#/') {
-      view = 'dashboard';
+      view = 'landing';
       return;
     }
     const parts = h.split('/');
-    const v = (parts[1] || 'dashboard') as View;
+    // Legacy #/dashboard alias → rewrite the URL, then render landing.
+    if (parts[1] === 'dashboard') {
+      console.warn('[apilog] #/dashboard is deprecated, redirecting to #/landing');
+      history.replaceState(null, '', '#/landing');
+      view = 'landing';
+      return;
+    }
+    const v = (parts[1] || 'landing') as View;
     if ((KNOWN_VIEWS as readonly string[]).includes(v)) {
       view = v;
     } else {
-      console.warn(`[apilog] unknown route ${h}, falling back to #/dashboard`);
-      view = 'dashboard';
+      console.warn(`[apilog] unknown route ${h}, falling back to #/landing`);
+      view = 'landing';
     }
     if (view === 'traces' && parts[2]) {
       const id = parts[2];
@@ -147,7 +159,7 @@
 
   function onRefresh(): void {
     if (view === 'traces') tracesReloadKey++;
-    else dashboardReloadKey++;
+    else landingReloadKey++;
   }
 
   function onAuth(): void {
@@ -177,19 +189,19 @@
   // ---------- auth-modal saved → reload current view ----------
   function onTokenSaved(): void {
     if (view === 'traces') tracesReloadKey++;
-    else dashboardReloadKey++;
+    else landingReloadKey++;
   }
 
   // ---------- boot sequence ----------
   //
   // 1) If no token on disk, pop the modal.
-  // 2) If there's no hash, force #/dashboard so the URL reflects the view.
+  // 2) If there's no hash, force #/landing so the URL reflects the view.
   // 3) applyHash() picks view + selectedId from the URL.
   $effect(() => {
     if (!getToken()) authModalOpen = true;
     if (typeof window !== 'undefined') {
       if (!window.location.hash) {
-        history.replaceState(null, '', '#/dashboard');
+        history.replaceState(null, '', '#/landing');
       }
     }
     applyHash();
@@ -209,10 +221,10 @@
 />
 
 <main>
-  {#if view === 'dashboard'}
-  <section id="dashboard">
-    {#key dashboardReloadKey}
-      <Dashboard {authFetch} />
+  {#if view === 'landing'}
+  <section id="landing">
+    {#key landingReloadKey}
+      <Landing {authFetch} />
     {/key}
   </section>
   {/if}
@@ -285,10 +297,8 @@
             includeSession={convoIncludeSession}
             onIncludeSessionToggle={setConvoIncludeSession}
           />
-        {:else if tab === 'headers'}
-          <HeadersTab trace={detail.trace} />
-        {:else if tab === 'body'}
-          <BodyTab trace={detail.trace} />
+        {:else if tab === 'raw'}
+          <RawTab trace={detail.trace ?? {}} />
         {/if}
       {/snippet}
     </DetailPanel>
@@ -306,7 +316,7 @@
     min-height: 0;
   }
 
-  #dashboard {
+  #landing {
     flex: 1;
     display: flex;
     flex-direction: column;

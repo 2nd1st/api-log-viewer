@@ -40,7 +40,12 @@
   // toggle, and replay was capability-mode no operator used. The backend
   // /api/traces/:id/replay endpoint is preserved for scripting; the UI
   // surface is gone.
-  export type DetailTab = 'overview' | 'conversation' | 'headers' | 'body';
+  //
+  // 2026-05-30: headers + body merged into a single 'raw' tab. Operators
+  // who want raw transport data want all four blocks (req headers, req
+  // body, resp headers, resp body) co-located; the split made them tab
+  // back and forth. See RawTab.svelte.
+  export type DetailTab = 'overview' | 'conversation' | 'raw';
 
   // Snippet args for tabBody. Some tab-specific state lives here on
   // DetailPanel rather than inside the tab body (which gets remounted
@@ -148,13 +153,13 @@
 
   // ---------- derived: tab list + meta ----------
   //
-  // Fixed four-tab strip — order matches the user's reading flow on
+  // Fixed three-tab strip — order matches the user's reading flow on
   // landing: stats first (overview), then transcript (conversation),
-  // then transport details (headers/body).
+  // then raw transport details (raw).
 
   const tabs = $derived.by<DetailTab[]>(() => {
     if (!detail) return [];
-    return ['overview', 'conversation', 'headers', 'body'];
+    return ['overview', 'conversation', 'raw'];
   });
 
   const durMs = $derived.by<number | null>(() => {

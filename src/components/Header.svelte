@@ -2,17 +2,19 @@
   // Header / nav strip.
   //
   // The brand text "api-log/viewer" stays. Nav tabs are now:
-  //   - Dashboard  (#/dashboard)  — default home view
-  //   - Traces     (#/traces)     — list + detail surface
+  //   - Landing  (#/landing)  — default home view
+  //   - Traces   (#/traces)   — list + detail surface
   //
   // The legacy Healthz tab is gone; the operator data is absorbed into
-  // the Dashboard's "internal" section (see Dashboard.svelte).
+  // the Landing's "internal" section (see Landing.svelte). The legacy
+  // #/dashboard route still resolves (App.svelte rewrites it to
+  // #/landing on entry) so old bookmarks keep working.
   //
   // The parent owns `view`, the status text + level, and the click
   // callbacks. The <a href="#/..."> tags rely on the App.svelte
   // hashchange listener to drive the actual route change.
 
-  export type View = 'dashboard' | 'traces';
+  export type View = 'landing' | 'traces';
   export type StatusLevel = '' | 'bad' | 'warn';
 
   interface Props {
@@ -41,10 +43,10 @@
   <span class="brand">api-log<span class="slash">/</span>viewer</span>
   <nav>
     <a
-      data-view="dashboard"
-      href="#/dashboard"
-      class:active={view === 'dashboard'}
-    >Dashboard</a>
+      data-view="landing"
+      href="#/landing"
+      class:active={view === 'landing'}
+    >Landing</a>
     <a
       data-view="traces"
       href="#/traces"

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TextBlock } from '../../lib/blocks';
   import { renderMarkdown, looksLikeMarkdown } from '../../lib/markdown';
+  import { hasXmlSections, parseXmlSections } from '../../lib/xmlPrompt';
 
   interface Props {
     block: TextBlock;
@@ -23,7 +24,43 @@
     showCollapsed ? lines.slice(0, COLLAPSE_THRESHOLD).join('\n') : block.text,
   );
 
-  const renderAsMarkdown = $derived(looksLikeMarkdown(visibleText));
+  // --- XML section path -----------------------------------------------------
+  // Codex L1 system prompts are flat XML: <personality>…</personality>
+  // <instructions>…</instructions> etc. When detected, render as a
+  // collapsible stack so the operator can drill into one section without
+  // scrolling 5000 lines.
+  const isXml = $derived(hasXmlSections(visibleText));
+  const xmlSections = $derived(isXml ? parseXmlSections(visibleText) : []);
+
+  // Section identity uses position (`${tag}@${i}`) because tags can repeat.
+  // Open-set tracks which section bodies are currently rendered. Default:
+  // only the first section is open. We don't reset this when visibleText
+  // changes (collapse/expand toggle) — operator's choices persist.
+  let openSections = $state<Set<string>>(new Set<string>());
+  let openInitialized = $state(false);
+  $effect(() => {
+    if (!openInitialized && xmlSections.length > 0) {
+      const initial = new Set<string>();
+      initial.add(`${xmlSections[0].tag}@0`);
+      openSections = initial;
+      openInitialized = true;
+    }
+  });
+
+  function toggleSection(key: string) {
+    const next = new Set(openSections);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    openSections = next;
+  }
+
+  function sectionLineCount(body: string): number {
+    if (!body) return 0;
+    return body.split('\n').length;
+  }
+
+  // --- Plain markdown path --------------------------------------------------
+  const renderAsMarkdown = $derived(!isXml && looksLikeMarkdown(visibleText));
   const markdownHtml = $derived(renderAsMarkdown ? renderMarkdown(visibleText) : '');
 
   const hiddenLineCount = $derived(isLong ? lines.length - COLLAPSE_THRESHOLD : 0);
@@ -41,7 +78,30 @@
   </header>
 
   <div class="body">
-    {#if renderAsMarkdown}
+    {#if isXml}
+      <div class="xml">
+        {#each xmlSections as section, i (i)}
+          {@const key = `${section.tag}@${i}`}
+          {@const open = openSections.has(key)}
+          {@const lc = sectionLineCount(section.body)}
+          <div class="xml-section">
+            <button
+              type="button"
+              class="xml-head"
+              aria-expanded={open}
+              onclick={() => toggleSection(key)}
+            >
+              <span class="xml-marker">{open ? '▾' : '▸'}</span>
+              <span class="xml-tag">{section.tag}</span>
+              <span class="xml-size">{lc} {lc === 1 ? 'line' : 'lines'}</span>
+            </button>
+            {#if open}
+              <div class="xml-body md">{@html renderMarkdown(section.body)}</div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {:else if renderAsMarkdown}
       <div class="md">{@html markdownHtml}</div>
     {:else}
       <pre class="plain">{visibleText}</pre>
@@ -117,6 +177,64 @@
     font-family: var(--sans);
     font-size: 13px;
     line-height: 1.55;
+  }
+
+  /* XML section stack — flat list of collapsible <tag> bodies. No
+     backgrounds, no role color. Only a hairline border-bottom per row
+     to give the stack a tabular spine. */
+  .xml {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2);
+  }
+  .xml-section {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--gap-2);
+  }
+  .xml-section:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .xml-head {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    width: 100%;
+    background: transparent;
+    border: 0;
+    padding: 2px 0;
+    color: var(--fg-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1;
+    text-align: left;
+    cursor: pointer;
+  }
+  .xml-head:hover { color: var(--accent); }
+  .xml-head:hover .xml-tag { color: var(--accent); }
+
+  .xml-marker {
+    display: inline-block;
+    width: 10px;
+    color: var(--fg-dim);
+    font-family: var(--mono);
+  }
+
+  .xml-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    font-weight: 500;
+  }
+
+  .xml-size {
+    margin-left: auto;
+    color: var(--fg-dim);
+  }
+
+  .xml-body {
+    margin-top: var(--gap-2);
   }
 
   /* Markdown body — Linear/Raycast-leaning restraint. */
