@@ -55,7 +55,7 @@
   }
 </script>
 
-<div class="block block--tool-result" class:block--err={isError}>
+<div class="block block--tool-result" class:block--err={isError} id={`tool-result-${block.tool_id}`}>
   <div class="block__header">
     <span class="block__role">{block.role}</span>
     <span class="block__glyph" aria-hidden="true">{isError ? '⚠' : '⚙'}</span>
@@ -84,11 +84,16 @@
 
 <style>
   .block {
-    padding: var(--gap-2) 0;
+    padding: var(--gap-2) var(--gap-3);
     border-bottom: 1px solid var(--border);
+    /* Tool results are model-side responses — share the assistant edge color. */
+    border-left: 2px solid var(--accent);
   }
   .block:last-child {
     border-bottom: none;
+  }
+  .block--err {
+    border-left-color: var(--err);
   }
 
   .block__header {

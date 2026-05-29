@@ -37,10 +37,7 @@
   import Header from './components/Header.svelte';
   import FilterSidebar from './components/FilterSidebar.svelte';
   import type { Filters } from './components/FilterSidebar.svelte';
-  import ListModeToggle from './components/ListModeToggle.svelte';
-  import type { ListMode } from './components/ListModeToggle.svelte';
   import TracesList from './components/TracesList.svelte';
-  import SessionsList from './components/SessionsList.svelte';
   import DetailPanel from './components/DetailPanel.svelte';
   import type { TabBodyCtx } from './components/DetailPanel.svelte';
   import Dashboard from './components/Dashboard.svelte';
@@ -56,7 +53,6 @@
   type View = 'dashboard' | 'traces';
 
   let view = $state<View>('dashboard');
-  let listMode = $state<ListMode>('traces');
 
   let selectedId = $state<string | null>(null);
 
@@ -86,7 +82,6 @@
   let authModalOpen = $state<boolean>(false);
 
   let tracesReloadKey = $state<number>(0);
-  let sessionsReloadKey = $state<number>(0);
   let dashboardReloadKey = $state<number>(0);
 
   let pagerPrevDisabled = $state<boolean>(true);
@@ -151,13 +146,8 @@
   // ---------- header button handlers ----------
 
   function onRefresh(): void {
-    if (view === 'traces') {
-      if (listMode === 'traces') tracesReloadKey++;
-      else sessionsReloadKey++;
-    } else {
-      // dashboard
-      dashboardReloadKey++;
-    }
+    if (view === 'traces') tracesReloadKey++;
+    else dashboardReloadKey++;
   }
 
   function onAuth(): void {
@@ -166,30 +156,13 @@
 
   // ---------- filter sidebar handlers ----------
 
-  function onApplyFilters(): void {
-    if (listMode === 'traces') tracesReloadKey++;
-    else sessionsReloadKey++;
-  }
-
-  function onClearFilters(): void {
-    if (listMode === 'traces') tracesReloadKey++;
-    else sessionsReloadKey++;
-  }
-
-  // ---------- mode toggle ----------
-  function onModeChange(m: ListMode): void {
-    void m;
-  }
+  function onApplyFilters(): void { tracesReloadKey++; }
+  function onClearFilters(): void { tracesReloadKey++; }
 
   // ---------- pager handlers ----------
 
-  function onPagerNext(): void {
-    tracesListRef?.next();
-  }
-
-  function onPagerPrev(): void {
-    tracesListRef?.prev();
-  }
+  function onPagerNext(): void { tracesListRef?.next(); }
+  function onPagerPrev(): void { tracesListRef?.prev(); }
 
   function onTracesPagerChange(s: {
     prevDisabled: boolean;
@@ -201,24 +174,10 @@
     pagerInfo = s.info;
   }
 
-  function onSessionsPagerChange(s: {
-    prevDisabled: boolean;
-    nextDisabled: boolean;
-    info: string;
-  }): void {
-    pagerPrevDisabled = s.prevDisabled;
-    pagerNextDisabled = s.nextDisabled;
-    pagerInfo = s.info;
-  }
-
   // ---------- auth-modal saved → reload current view ----------
   function onTokenSaved(): void {
-    if (view === 'traces') {
-      if (listMode === 'traces') tracesReloadKey++;
-      else sessionsReloadKey++;
-    } else {
-      dashboardReloadKey++;
-    }
+    if (view === 'traces') tracesReloadKey++;
+    else dashboardReloadKey++;
   }
 
   // ---------- boot sequence ----------
@@ -270,34 +229,21 @@
     />
 
     <div id="list">
-      <ListModeToggle bind:mode={listMode} onChange={onModeChange} />
-
       <div class="table-wrap">
-        {#if listMode === 'traces'}
-          <TracesList
-            bind:this={tracesListRef}
-            {filters}
-            {selectedId}
-            reloadKey={tracesReloadKey}
-            reloadResets={true}
-            bind:knownPaths
-            bind:knownModels
-            bind:knownKeys
-            {authFetch}
-            onStatus={setStatus}
-            {onSelectTrace}
-            onPagerChange={onTracesPagerChange}
-          />
-        {:else}
-          <SessionsList
-            filters={{ since: filters.since, limit: filters.limit }}
-            reloadKey={sessionsReloadKey}
-            {authFetch}
-            {setStatus}
-            {onSelectTrace}
-            onPagerChange={onSessionsPagerChange}
-          />
-        {/if}
+        <TracesList
+          bind:this={tracesListRef}
+          {filters}
+          {selectedId}
+          reloadKey={tracesReloadKey}
+          reloadResets={true}
+          bind:knownPaths
+          bind:knownModels
+          bind:knownKeys
+          {authFetch}
+          onStatus={setStatus}
+          {onSelectTrace}
+          onPagerChange={onTracesPagerChange}
+        />
       </div>
 
       <div class="pager">

@@ -289,6 +289,67 @@
       .slice(0, 30),
   );
 
+  // ---------- top active sessions (replacement for the cut Sessions list) ----------
+
+  interface SessionEntry {
+    sessionRootId: string;
+    turns: number;
+    firstTs: string;
+    lastTs: string;
+    lastPath: string;
+    lastStatus: number | null;
+    firstTraceId: string;
+    lastTraceId: string;
+  }
+
+  const topSessions = $derived.by<SessionEntry[]>(() => {
+    const bySession = new Map<string, SessionEntry>();
+    for (const r of rows) {
+      const sid = r.session_root_id;
+      if (!sid) continue;
+      const ts = r.ts_start ?? '';
+      const existing = bySession.get(sid);
+      if (!existing) {
+        bySession.set(sid, {
+          sessionRootId: sid,
+          turns: 1,
+          firstTs: ts,
+          lastTs: ts,
+          lastPath: r.path ?? '',
+          lastStatus: r.status ?? null,
+          firstTraceId: r.id,
+          lastTraceId: r.id,
+        });
+        continue;
+      }
+      existing.turns++;
+      if (ts > existing.lastTs) {
+        existing.lastTs = ts;
+        existing.lastPath = r.path ?? existing.lastPath;
+        existing.lastStatus = r.status ?? existing.lastStatus;
+        existing.lastTraceId = r.id;
+      }
+      if (ts && (!existing.firstTs || ts < existing.firstTs)) {
+        existing.firstTs = ts;
+        existing.firstTraceId = r.id;
+      }
+    }
+    return Array.from(bySession.values())
+      .sort((a, b) => b.lastTs.localeCompare(a.lastTs))
+      .slice(0, 8);
+  });
+
+  function sessionSpanMs(s: SessionEntry): number {
+    if (!s.firstTs || !s.lastTs) return 0;
+    return new Date(s.lastTs).getTime() - new Date(s.firstTs).getTime();
+  }
+
+  function fmtSpan(ms: number): string {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60_000).toFixed(1)}m`;
+  }
+
   function handleRowClick(id: string) {
     onSelectTrace?.(id);
     if (typeof window !== 'undefined') {
@@ -468,6 +529,30 @@
         </div>
       {/if}
     </div>
+  </section>
+
+  <!-- ---------- top active sessions ---------- -->
+  <section class="sessions">
+    <div class="chart-head">
+      <h3 class="group-title">top sessions</h3>
+      <span class="sample-tag">recent {rows.length}</span>
+    </div>
+    {#if topSessions.length === 0}
+      <div class="empty">no sessions in this window</div>
+    {:else}
+      <div class="session-table">
+        {#each topSessions as s (s.sessionRootId)}
+          <button type="button" class="session-row" onclick={() => handleRowClick(s.lastTraceId)}>
+            <span class="s-id mono">{shortId(s.sessionRootId)}</span>
+            <span class="s-turns mono">{s.turns} turns</span>
+            <span class="s-span mono">{fmtSpan(sessionSpanMs(s))}</span>
+            <span class="s-path mono">{s.lastPath}</span>
+            <span class="s-status mono {statusClass(s.lastStatus)}">{s.lastStatus ?? '—'}</span>
+            <span class="s-last mono">{shortTs(s.lastTs)}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
   </section>
 
   <!-- ---------- recent activity tape ---------- -->
@@ -661,11 +746,41 @@
   }
 
   /* ---------- activity tape ---------- */
-  .activity {
+  .activity, .sessions {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
+
+  .session-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .session-row {
+    display: grid;
+    grid-template-columns: 90px 80px 80px 1fr 50px 110px;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .session-row:last-child { border-bottom: none; }
+  .session-row:hover { background: var(--bg-elev-2); }
+  .s-id     { color: var(--accent); }
+  .s-turns  { color: var(--fg); }
+  .s-span   { color: var(--fg-muted); }
+  .s-path   { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s-status { font-weight: 600; }
+  .s-last   { color: var(--fg-muted); text-align: right; }
+
   .tape {
     display: flex;
     flex-direction: column;

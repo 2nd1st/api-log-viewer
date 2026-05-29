@@ -44,7 +44,7 @@
   }
 </script>
 
-<div class="block block--tool-call">
+<div class="block block--tool-call" id={`tool-call-${block.tool_id}`}>
   <div class="row row--top">
     <span class="role">{block.role}</span>
     <div class="meta">
@@ -87,7 +87,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--gap-2);
-    padding: var(--gap-2) 0;
+    padding: var(--gap-2) var(--gap-3);
+    border-bottom: 1px solid var(--border);
+    /* Tool calls are model-side actions — share the assistant edge color. */
+    border-left: 2px solid var(--accent);
   }
 
   .row {
@@ -105,7 +108,7 @@
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--fg-dim);
+    color: var(--accent);
   }
 
   .meta {

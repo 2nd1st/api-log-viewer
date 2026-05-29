@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TextBlock } from '../../lib/blocks';
+  import { renderMarkdown, looksLikeMarkdown } from '../../lib/markdown';
 
   interface Props {
     block: TextBlock;
@@ -10,53 +11,26 @@
 
   const COLLAPSE_THRESHOLD = 30;
 
-  // Split text into lines once for both render + line-count math
   const lines = $derived(block.text.split('\n'));
   const isLong = $derived(lines.length > COLLAPSE_THRESHOLD);
 
   let collapsed = $state(true);
   const showCollapsed = $derived(isLong && collapsed);
 
-  // Source label (e.g. "req body", "resp events")
   const sourceLabel = $derived(`${block.source.side} ${block.source.container}`);
-
-  // Segment the text into plain spans and ```code fences``` for markdown-light
-  // highlighting. We do NOT pull in a full markdown lib.
-  interface Segment {
-    kind: 'text' | 'code';
-    content: string;
-    lang?: string;
-  }
-
-  function segment(src: string): Segment[] {
-    const out: Segment[] = [];
-    const re = /```([\w-]*)\n?([\s\S]*?)```/g;
-    let last = 0;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(src)) !== null) {
-      if (m.index > last) {
-        out.push({ kind: 'text', content: src.slice(last, m.index) });
-      }
-      out.push({ kind: 'code', lang: m[1] || undefined, content: m[2] });
-      last = re.lastIndex;
-    }
-    if (last < src.length) {
-      out.push({ kind: 'text', content: src.slice(last) });
-    }
-    return out;
-  }
 
   const visibleText = $derived(
     showCollapsed ? lines.slice(0, COLLAPSE_THRESHOLD).join('\n') : block.text,
   );
-  const segments = $derived(segment(visibleText));
+
+  const renderAsMarkdown = $derived(looksLikeMarkdown(visibleText));
+  const markdownHtml = $derived(renderAsMarkdown ? renderMarkdown(visibleText) : '');
 
   const hiddenLineCount = $derived(isLong ? lines.length - COLLAPSE_THRESHOLD : 0);
 </script>
 
-<div class="block">
+<div class="block role-{block.role}">
   <header class="head">
-    <span class="glyph" aria-hidden="true">─</span>
     <span class="role">{block.role}</span>
     <span class="meta">
       {#if block.token_estimate !== undefined}
@@ -67,13 +41,11 @@
   </header>
 
   <div class="body">
-    {#each segments as seg}
-      {#if seg.kind === 'code'}
-        <pre class="code"><code>{seg.content}</code></pre>
-      {:else}
-        <span class="text">{seg.content}</span>
-      {/if}
-    {/each}
+    {#if renderAsMarkdown}
+      <div class="md">{@html markdownHtml}</div>
+    {:else}
+      <pre class="plain">{visibleText}</pre>
+    {/if}
   </div>
 
   {#if isLong}
@@ -82,20 +54,27 @@
       class="toggle"
       onclick={() => (collapsed = !collapsed)}
     >
-      <span class="toggle-glyph" aria-hidden="true">▸</span>
       {collapsed ? `show ${hiddenLineCount} more lines` : 'collapse'}
     </button>
   {/if}
 </div>
 
 <style>
+  /* Role-edge accent — restraint variant of "color block per role".
+     Each role gets a 2px LEFT border in a different shade. Backgrounds
+     stay flat. This is the only role-coded visual signal. */
   .block {
     display: flex;
     flex-direction: column;
     gap: var(--gap-2);
-    padding: var(--gap-2) 0;
+    padding: var(--gap-2) var(--gap-3);
     border-bottom: 1px solid var(--border);
+    border-left: 2px solid transparent;
   }
+  .block.role-user      { border-left-color: var(--fg-dim); }
+  .block.role-assistant { border-left-color: var(--accent); }
+  .block.role-system    { border-left-color: var(--border-strong); }
+  .block.role-developer { border-left-color: var(--border-strong); }
 
   .head {
     display: flex;
@@ -106,19 +85,15 @@
     line-height: 1;
   }
 
-  .glyph {
-    color: var(--fg-dim);
-    width: 1ch;
-    display: inline-block;
-    text-align: center;
-  }
-
   .role {
-    color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 500;
   }
+  .role-user      .role { color: var(--fg-muted); }
+  .role-assistant .role { color: var(--accent); }
+  .role-system    .role { color: var(--fg-dim); }
+  .role-developer .role { color: var(--fg-dim); }
 
   .meta {
     margin-left: auto;
@@ -126,42 +101,106 @@
     gap: var(--gap-3);
     color: var(--fg-dim);
   }
-
-  .meta-item {
-    white-space: nowrap;
-  }
+  .meta-item { white-space: nowrap; }
 
   .body {
     font-family: var(--sans);
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.55;
     color: var(--fg);
+  }
+
+  .plain {
+    margin: 0;
     white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  /* Markdown body — Linear/Raycast-leaning restraint. */
+  .md :global(.md-h)  {
+    margin: 14px 0 6px;
+    line-height: 1.3;
+    color: var(--fg);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .md :global(.md-h:first-child) { margin-top: 0; }
+  .md :global(.md-h1) { font-size: 17px; }
+  .md :global(.md-h2) { font-size: 15px; }
+  .md :global(.md-h3) { font-size: 13.5px; }
+  .md :global(.md-h4),
+  .md :global(.md-h5),
+  .md :global(.md-h6) {
+    font-size: 12px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .md :global(.md-p) {
+    margin: 6px 0;
     word-break: break-word;
   }
 
-  .text {
-    white-space: pre-wrap;
+  .md :global(.md-list) {
+    margin: 6px 0;
+    padding-left: 20px;
   }
+  .md :global(li)      { margin: 2px 0; }
+  .md :global(li > p)  { margin: 0; }
 
-  .code {
+  .md :global(strong)  { font-weight: 600; color: var(--fg); }
+  .md :global(em)      { font-style: italic; }
+
+  .md :global(code) {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 4px;
+    color: var(--fg);
+  }
+  .md :global(.md-pre) {
     margin: var(--gap-2) 0;
     padding: var(--gap-2) var(--gap-3);
     background: var(--bg-elev);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    overflow-x: auto;
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.5;
     color: var(--fg);
-    overflow-x: auto;
-    white-space: pre;
+  }
+  .md :global(.md-pre > code) {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    font-size: 12px;
   }
 
-  .code code {
-    font-family: inherit;
-    background: transparent;
-    padding: 0;
+  .md :global(.md-quote) {
+    margin: var(--gap-2) 0;
+    padding-left: var(--gap-3);
+    border-left: 2px solid var(--border-strong);
+    color: var(--fg-muted);
+  }
+
+  .md :global(a) {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .md :global(a:hover) { text-decoration: underline; }
+
+  .md :global(.md-hr) {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: var(--gap-3) 0;
   }
 
   .toggle {
@@ -173,21 +212,6 @@
     font-family: var(--mono);
     font-size: 11px;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--gap-1);
   }
-
-  .toggle:hover {
-    color: var(--accent);
-  }
-
-  .toggle-glyph {
-    display: inline-block;
-    transition: transform 0.12s ease;
-  }
-
-  .toggle:not(:has(+ *)) .toggle-glyph {
-    /* nothing — glyph rotation handled inline below if needed */
-  }
+  .toggle:hover { color: var(--accent); }
 </style>
