@@ -50,9 +50,6 @@
   import OverviewTab from './components/tabs/OverviewTab.svelte';
   import HeadersTab from './components/tabs/HeadersTab.svelte';
   import BodyTab from './components/tabs/BodyTab.svelte';
-  import EventsTab from './components/tabs/EventsTab.svelte';
-  import SessionTab from './components/tabs/SessionTab.svelte';
-  import ReplayTab from './components/tabs/ReplayTab.svelte';
 
   // ---------- top-level state ----------
 
@@ -324,7 +321,14 @@
       onSelect={(id) => (selectedId = id)}
     >
       {#snippet tabBody({ detail, tab, convoIncludeSession, setConvoIncludeSession }: TabBodyCtx)}
-        {#if tab === 'conversation'}
+        {#if tab === 'overview'}
+          <OverviewTab
+            row={detail.row}
+            trace={detail.trace ?? {}}
+            {authFetch}
+            onSelect={(id) => (selectedId = id)}
+          />
+        {:else if tab === 'conversation'}
           <ConversationTab
             row={{
               ...detail.row,
@@ -335,18 +339,10 @@
             includeSession={convoIncludeSession}
             onIncludeSessionToggle={setConvoIncludeSession}
           />
-        {:else if tab === 'overview'}
-          <OverviewTab row={detail.row} />
         {:else if tab === 'headers'}
           <HeadersTab trace={detail.trace} />
         {:else if tab === 'body'}
           <BodyTab trace={detail.trace} />
-        {:else if tab === 'events'}
-          <EventsTab trace={detail.trace} />
-        {:else if tab === 'session'}
-          <SessionTab row={detail.row} onSelect={(id) => (selectedId = id)} />
-        {:else if tab === 'replay'}
-          <ReplayTab trace={detail.row} />
         {/if}
       {/snippet}
     </DetailPanel>

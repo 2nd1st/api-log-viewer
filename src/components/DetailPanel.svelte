@@ -34,7 +34,13 @@
 
   export type TraceDetail = { row: TraceRow; trace?: TraceBlob };
 
-  export type DetailTab = 'conversation' | 'overview' | 'headers' | 'body' | 'events' | 'session' | 'replay';
+  // Tab strip kept intentionally small. The events/session/replay tabs
+  // were retired 2026-05-29 — events was a low-level firehose nobody
+  // read, session was redundant with the conversation include-session
+  // toggle, and replay was capability-mode no operator used. The backend
+  // /api/traces/:id/replay endpoint is preserved for scripting; the UI
+  // surface is gone.
+  export type DetailTab = 'overview' | 'conversation' | 'headers' | 'body';
 
   // Snippet args for tabBody. Some tab-specific state lives here on
   // DetailPanel rather than inside the tab body (which gets remounted
@@ -87,7 +93,9 @@
   // ---------- internal state ----------
 
   let detail = $state<TraceDetail | null>(null);
-  let detailTab = $state<DetailTab>('conversation');
+  // Default tab is now overview — operator lands on stats / identity /
+  // session metrics, not on the raw conversation transcript.
+  let detailTab = $state<DetailTab>('overview');
   let loadState = $state<'idle' | 'loading' | 'error'>('idle');
   let loadError = $state<string>('');
 
@@ -105,7 +113,7 @@
   $effect(() => {
     const id = traceId;
     detail = null;
-    detailTab = 'conversation';
+    detailTab = 'overview';
     convoIncludeSession = false;
     if (!id) {
       loadState = 'idle';
@@ -140,22 +148,13 @@
 
   // ---------- derived: tab list + meta ----------
   //
-  // events.length triggers the 'events' and 'replay' tabs — same
-  // filter() pipeline as the legacy renderDetail().
+  // Fixed four-tab strip — order matches the user's reading flow on
+  // landing: stats first (overview), then transcript (conversation),
+  // then transport details (headers/body).
 
   const tabs = $derived.by<DetailTab[]>(() => {
     if (!detail) return [];
-    const events = detail.trace?.resp?.events ?? [];
-    const base: (DetailTab | null)[] = [
-      'conversation',
-      'overview',
-      'headers',
-      'body',
-      events.length ? 'events' : null,
-      'session',
-      events.length ? 'replay' : null,
-    ];
-    return base.filter((t): t is DetailTab => !!t);
+    return ['overview', 'conversation', 'headers', 'body'];
   });
 
   const durMs = $derived.by<number | null>(() => {
