@@ -204,14 +204,20 @@
 
   const total = $derived(rows.length);
 
+  // Filter to traces that adapt() can actually identify — admin paths
+  // (/api/v1/*, /, /healthz) are excluded from the protocol / model / client
+  // KPIs so they don't drag the top values to "unknown" / "—".
+  const llmRows = $derived(
+    rows.filter((r) => detectProtocol(r.path) !== 'unknown'),
+  );
+
   const topProtocol = $derived.by(() => {
-    const protos = rows.map((r) => detectProtocol(r.path));
-    return topKey(protos);
+    return topKey(llmRows.map((r) => detectProtocol(r.path)));
   });
 
-  const topModel = $derived.by(() => topKey(rows.map((r) => r.model)));
+  const topModel = $derived.by(() => topKey(llmRows.map((r) => r.model)));
 
-  const topClient = $derived.by(() => topKey(rows.map((r) => r.client)));
+  const topClient = $derived.by(() => topKey(llmRows.map((r) => r.client)));
 
   const errorRate = $derived.by(() => {
     if (rows.length === 0) return { pct: 0, errs: 0 };
@@ -382,17 +388,17 @@
     <div class="kpi">
       <div class="kpi-label">top protocol</div>
       <div class="kpi-value">{topProtocol.value ?? '—'}</div>
-      <div class="kpi-sub">{topProtocol.count} traces</div>
+      <div class="kpi-sub">{topProtocol.count} / {llmRows.length} llm</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">top model</div>
       <div class="kpi-value">{topModel.value ?? '—'}</div>
-      <div class="kpi-sub">{topModel.count} traces</div>
+      <div class="kpi-sub">{topModel.count} / {llmRows.length} llm</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">top client</div>
       <div class="kpi-value">{topClient.value ?? '—'}</div>
-      <div class="kpi-sub">{topClient.count} traces</div>
+      <div class="kpi-sub">{topClient.count} / {llmRows.length} llm</div>
     </div>
     <div class="kpi" class:bad={errorRate.pct >= 10}>
       <div class="kpi-label">errors</div>
