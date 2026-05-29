@@ -214,7 +214,7 @@
     <pre class="json">{@html respHtml}</pre>
   {:else}
     <pre class="json"><span style="color:var(--fg-dim)"
-      >empty (streaming — see events tab)</span
+      >empty (response was streamed; see conversation tab for accumulated blocks)</span
     ></pre>
   {/if}
 </div>
@@ -255,20 +255,23 @@
     overflow: auto;
   }
 
-  /* Syntax-highlighting spans are emitted from {@html} so they need
-     :global() to survive Svelte's scoping. */
+  /* JSON syntax classes — palette-only per PHILOSOPHY §5 (single
+     accent). Keys are subordinate labels (muted); strings carry the
+     content (default fg); numbers are the operator's eye-magnet (the
+     one accent); booleans / null are sparse, dim. No off-palette
+     hex literals. :global() because {@html} bypasses Svelte scoping. */
   :global(.json-key) {
-    color: #93c5fd;
+    color: var(--fg-muted);
   }
   :global(.json-string) {
-    color: #d6c992;
+    color: var(--fg);
   }
   :global(.json-num) {
-    color: #c4b5fd;
+    color: var(--accent);
   }
   :global(.json-bool),
   :global(.json-null) {
-    color: var(--err);
+    color: var(--fg-dim);
   }
 
   :global(.elided) {
