@@ -1,0 +1,81 @@
+/* Base styles. Component-specific styles live scoped inside each .svelte file. */
+
+:root {
+  /* zinc palette — restrained, no chrome. */
+  --bg: #0a0a0b;
+  --bg-elev: #131316;
+  --bg-elev-2: #1c1c20;
+  --border: #2a2a30;
+  --border-strong: #3a3a42;
+  --fg: #e4e4e7;
+  --fg-muted: #a1a1aa;
+  --fg-dim: #71717a;
+
+  /* single accent — teal-300-ish */
+  --accent: #5eead4;
+  --accent-dim: #2dd4bf;
+
+  --ok: #4ade80;
+  --warn: #facc15;
+  --err: #f87171;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
+  --gap-6: 24px;
+
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code, pre, .mono { font-family: var(--mono); }
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--border-strong); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+input, select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
