@@ -212,7 +212,7 @@
   {#if view === 'dashboard'}
   <section id="dashboard">
     {#key dashboardReloadKey}
-      <Dashboard {authFetch} {onSelectTrace} />
+      <Dashboard {authFetch} />
     {/key}
   </section>
   {/if}
