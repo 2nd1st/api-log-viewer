@@ -3,3 +3,8 @@ dist
 .DS_Store
 *.log
 .vite
+
+# Secrets — never commit. Tokens live at ../.env (parent, not git).
+.env
+.env.local
+.env.*.local
