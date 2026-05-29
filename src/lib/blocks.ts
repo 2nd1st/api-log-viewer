@@ -49,9 +49,23 @@ export interface TextBlock extends BlockBase {
 export interface ReasoningBlock extends BlockBase {
   type: 'reasoning';
   role: 'assistant';
+  // Empty in the common OpenAI-Responses case (the model's reasoning is held
+  // server-side and never delivered to the client). Non-empty only when the
+  // upstream actually emits text (some o1-summary variants, or open models
+  // that don't redact). The renderer treats an empty value as "no body to
+  // expand" — NOT as a placeholder to apologize for.
   reasoning_text: string;
+  // Single-line summary the model emitted alongside reasoning, if any. When
+  // present this is the only meaningful content the user can read.
+  summary?: string;
+  // Stable id ("rs_…") for cross-trace correlation + debugging. Shown
+  // truncated in the meta strip.
+  id?: string;
   budget_tokens?: number;
-  is_encrypted?: boolean; // true if the trace contains encrypted_content instead of plaintext
+  // INFORMATIONAL — adapters set this when only encrypted_content is present.
+  // The renderer does NOT surface "encrypted_content" wording; the absence
+  // of body is communicated by the block being a non-expandable tombstone.
+  is_encrypted?: boolean;
 }
 
 /**

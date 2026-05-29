@@ -6,26 +6,20 @@
     onJumpToPair?: (id: string) => void;
   }
 
-  // onJumpToPair is intentionally unused for reasoning blocks; only tool_call /
-  // tool_result use it. We still accept it to keep the props contract uniform.
+  // onJumpToPair is unused for reasoning blocks; kept for prop-shape parity.
   let { block }: Props = $props();
 
-  let expanded = $state(false);
-
-  // The schema has no explicit summary field, so derive a one-line preview from
-  // the leading prose of reasoning_text. Strip newlines, collapse whitespace,
-  // clip to a sensible width.
-  const preview = $derived.by(() => {
-    const text = (block.reasoning_text ?? '').trim();
-    if (!text) return '';
-    const firstChunk = text.split(/\n\s*\n/, 1)[0] ?? text;
-    const flat = firstChunk.replace(/\s+/g, ' ').trim();
-    return flat.length > 160 ? flat.slice(0, 160) + '…' : flat;
-  });
-
+  // The block has "body to expand" only when the upstream actually delivered
+  // text — either a summary line or plaintext reasoning. In OpenAI Responses
+  // (the dominant source) both are absent and we render a single-line
+  // tombstone. NEVER surface "encrypted_content" or "plaintext not available"
+  // wording — the absence is communicated by the row being uncollapsible.
   const hasBody = $derived(
+    !!(block.summary && block.summary.trim().length > 0) ||
     !!(block.reasoning_text && block.reasoning_text.trim().length > 0)
   );
+
+  let expanded = $state(false);
 
   const tokenLabel = $derived.by(() => {
     if (typeof block.token_estimate === 'number') return `${block.token_estimate}t`;
@@ -33,55 +27,58 @@
     return '';
   });
 
+  // Truncated id for the meta strip. rs_0c74…3aa45 keeps the prefix
+  // (so you can tell at a glance it's a Responses reasoning id) plus the
+  // last 5 chars so two adjacent reasoning rows are visually distinct.
+  const idLabel = $derived.by(() => {
+    if (!block.id) return '';
+    if (block.id.length <= 12) return block.id;
+    return block.id.slice(0, 6) + '…' + block.id.slice(-5);
+  });
+
   function toggle() {
-    if (!hasBody && !block.is_encrypted) return;
+    if (!hasBody) return;
     expanded = !expanded;
   }
 </script>
 
-<div class="block" class:is-expanded={expanded}>
+<div class="block" class:has-body={hasBody} class:is-expanded={expanded}>
   <button
     class="head"
     type="button"
     onclick={toggle}
-    aria-expanded={expanded}
-    aria-label={expanded ? 'Collapse reasoning' : 'Expand reasoning'}
+    disabled={!hasBody}
+    aria-expanded={hasBody ? expanded : undefined}
+    aria-label={hasBody ? (expanded ? 'Collapse reasoning' : 'Expand reasoning') : 'reasoning (no body delivered)'}
   >
-    <span class="marker" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+    <span class="marker" aria-hidden="true">
+      {hasBody ? (expanded ? '▾' : '▸') : '·'}
+    </span>
     <span class="role">assistant · reasoning</span>
 
-    {#if !expanded}
-      <span class="preview">
-        {#if block.is_encrypted}
-          <span class="enc">encrypted reasoning</span>
-        {:else if preview}
-          {preview}
-        {:else}
-          <span class="enc">(empty)</span>
-        {/if}
-      </span>
+    {#if hasBody && !expanded && block.summary}
+      <span class="summary">{block.summary}</span>
     {:else}
-      <span class="preview-spacer"></span>
+      <span class="spacer"></span>
     {/if}
 
     <span class="meta mono">
+      {#if idLabel}<span class="meta-item meta-id">{idLabel}</span>{/if}
       {#if tokenLabel}<span class="meta-item">{tokenLabel}</span>{/if}
       <span class="meta-item">{block.source.side}</span>
       <span class="meta-item">{block.source.container}</span>
     </span>
   </button>
 
-  {#if expanded}
+  {#if expanded && hasBody}
     <div class="body">
-      {#if block.is_encrypted && !hasBody}
-        <div class="enc-note mono">
-          encrypted_content — plaintext not available in this trace
-        </div>
-      {:else}
+      {#if block.summary && block.reasoning_text}
+        <div class="summary-line">{block.summary}</div>
         <pre class="text mono">{block.reasoning_text}</pre>
-        {#if block.is_encrypted && hasBody}
-          <div class="enc-note mono">encrypted_content present alongside text</div>
-        {/if}
+      {:else if block.reasoning_text}
+        <pre class="text mono">{block.reasoning_text}</pre>
+      {:else if block.summary}
+        <div class="summary-line">{block.summary}</div>
       {/if}
     </div>
   {/if}
@@ -89,7 +86,6 @@
 
 <style>
   .block {
-    /* Distinctive dim color — reasoning is "behind the curtain" thought. */
     color: var(--fg-dim);
     border-bottom: 1px solid var(--border);
     padding: var(--gap-2) 0;
@@ -97,7 +93,6 @@
   }
 
   .head {
-    /* override the global <button> styling — reasoning row is a flat line, not a card. */
     width: 100%;
     display: grid;
     grid-template-columns: auto auto 1fr auto;
@@ -110,10 +105,11 @@
     color: inherit;
     text-align: left;
     cursor: pointer;
-    min-height: 20px;
+    min-height: 18px;
   }
   .head:hover { border: 0; }
-  .head:hover .role { color: var(--fg-muted); }
+  .head:disabled { cursor: default; }
+  .has-body .head:hover .role { color: var(--fg-muted); }
   .head:focus-visible {
     outline: 1px solid var(--accent-dim);
     outline-offset: 2px;
@@ -137,21 +133,16 @@
     white-space: nowrap;
   }
 
-  .preview {
+  .summary {
     font-family: var(--sans);
-    font-style: italic;
-    color: var(--fg-dim);
+    font-size: 12px;
+    color: var(--fg-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
   }
-  .preview-spacer { min-width: 0; }
-  .enc {
-    font-style: normal;
-    color: var(--fg-dim);
-    opacity: 0.8;
-  }
+  .spacer { min-width: 0; }
 
   .meta {
     display: inline-flex;
@@ -162,15 +153,23 @@
     white-space: nowrap;
   }
   .meta-item { display: inline-block; }
+  .meta-id {
+    opacity: 0.7;
+    font-feature-settings: "tnum";
+  }
 
   .body {
     margin-top: var(--gap-2);
     padding: var(--gap-2) var(--gap-3);
-    /* Hairline-only — no card fill, per visual baseline. */
     border-left: 1px solid var(--border);
     margin-left: 4px;
   }
-
+  .summary-line {
+    color: var(--fg-muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    margin-bottom: var(--gap-2);
+  }
   .text {
     margin: 0;
     white-space: pre-wrap;
@@ -178,11 +177,5 @@
     color: var(--fg-muted);
     font-size: 12px;
     line-height: 1.55;
-  }
-
-  .enc-note {
-    margin-top: var(--gap-2);
-    font-size: 11px;
-    color: var(--fg-dim);
   }
 </style>

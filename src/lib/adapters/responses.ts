@@ -143,30 +143,35 @@ function adaptInputItem(item: Json, index: number): Block[] {
         return adaptInputMessage(item, index);
 
       case 'reasoning': {
-        // Prior reasoning is usually delivered as encrypted_content (Codex)
-        // with empty summary. If decrypted text is present in `content`, use it;
-        // otherwise mark is_encrypted so the UI shows a redacted placeholder.
-        const summaryParts: string[] = Array.isArray(item.summary)
-          ? item.summary.map((s: Json) => (typeof s?.text === 'string' ? s.text : ''))
-          : [];
-        const contentParts: string[] = Array.isArray(item.content)
-          ? item.content.map((c: Json) =>
-              typeof c?.text === 'string' ? c.text : ''
-            )
-          : [];
-        const text = [...summaryParts, ...contentParts]
-          .filter((s) => s.length > 0)
-          .join('\n');
-        const isEncrypted =
-          typeof item.encrypted_content === 'string' &&
-          item.encrypted_content.length > 0 &&
-          text.length === 0;
+        // OpenAI Responses keeps the actual reasoning text server-side; the
+        // client almost always receives ONLY encrypted_content + empty
+        // summary[]. When the model does emit a summary (rare in codex
+        // traffic), surface it on its own field. reasoning_text stays for
+        // the rare cases where content[].text actually carries plaintext.
+        const summaryText = Array.isArray(item.summary)
+          ? item.summary
+              .map((s: Json) => (typeof s?.text === 'string' ? s.text : ''))
+              .filter((s: string) => s.length > 0)
+              .join('\n')
+          : '';
+        const contentText = Array.isArray(item.content)
+          ? item.content
+              .map((c: Json) => (typeof c?.text === 'string' ? c.text : ''))
+              .filter((s: string) => s.length > 0)
+              .join('\n')
+          : '';
         const block: ReasoningBlock = {
           type: 'reasoning',
           role: 'assistant',
           source,
-          reasoning_text: text,
-          is_encrypted: isEncrypted || undefined,
+          reasoning_text: contentText,
+          summary: summaryText || undefined,
+          id: typeof item.id === 'string' ? item.id : undefined,
+          is_encrypted:
+            typeof item.encrypted_content === 'string' &&
+            item.encrypted_content.length > 0
+              ? true
+              : undefined,
         };
         return [block];
       }
@@ -483,6 +488,7 @@ function startBlock(
       role: 'assistant',
       source,
       reasoning_text: '',
+      id: typeof item.id === 'string' ? item.id : undefined,
       is_encrypted:
         typeof item.encrypted_content === 'string' && item.encrypted_content.length > 0
           ? true
@@ -539,21 +545,28 @@ function finalizeItem(data: Json, byItemId: Map<string, InProgress>): void {
   // never emits a streaming reasoning delta in this protocol; we just see
   // .added (empty) and .done (with encrypted_content and/or summary).
   if (ip.block.type === 'reasoning' && item.type === 'reasoning') {
-    const summaryParts: string[] = Array.isArray(item.summary)
-      ? item.summary.map((s: Json) => (typeof s?.text === 'string' ? s.text : ''))
-      : [];
-    const contentParts: string[] = Array.isArray(item.content)
-      ? item.content.map((c: Json) => (typeof c?.text === 'string' ? c.text : ''))
-      : [];
-    const text = [...summaryParts, ...contentParts].filter((s) => s.length > 0).join('\n');
-    if (text.length > 0) {
-      ip.block.reasoning_text = text;
-      ip.block.is_encrypted = undefined;
-    } else if (
+    const summaryText = Array.isArray(item.summary)
+      ? item.summary
+          .map((s: Json) => (typeof s?.text === 'string' ? s.text : ''))
+          .filter((s: string) => s.length > 0)
+          .join('\n')
+      : '';
+    const contentText = Array.isArray(item.content)
+      ? item.content
+          .map((c: Json) => (typeof c?.text === 'string' ? c.text : ''))
+          .filter((s: string) => s.length > 0)
+          .join('\n')
+      : '';
+    if (contentText.length > 0) ip.block.reasoning_text = contentText;
+    if (summaryText.length > 0) ip.block.summary = summaryText;
+    if (typeof item.id === 'string' && !ip.block.id) ip.block.id = item.id;
+    if (
       typeof item.encrypted_content === 'string' &&
       item.encrypted_content.length > 0
     ) {
       ip.block.is_encrypted = true;
+    } else if (contentText.length > 0) {
+      ip.block.is_encrypted = undefined;
     }
     return;
   }
@@ -566,7 +579,7 @@ function finalizeItem(data: Json, byItemId: Map<string, InProgress>): void {
       const parts: string[] = Array.isArray(item.content)
         ? item.content.map((c: Json) => (typeof c?.text === 'string' ? c.text : ''))
         : [];
-      const text = parts.filter((s) => s.length > 0).join('\n');
+      const text = parts.filter((s: string) => s.length > 0).join('\n');
       if (text.length > 0) ip.block.text = text;
     }
     return;
