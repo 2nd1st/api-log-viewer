@@ -48,7 +48,7 @@
   import TracesList from './components/TracesList.svelte';
   import SessionsList from './components/SessionsList.svelte';
   import DetailPanel from './components/DetailPanel.svelte';
-  import type { TraceDetail, DetailTab } from './components/DetailPanel.svelte';
+  import type { TabBodyCtx } from './components/DetailPanel.svelte';
   import HealthzView from './components/HealthzView.svelte';
   import AuthModal from './components/AuthModal.svelte';
 
@@ -132,24 +132,25 @@
 
   // ---------- hash routing (1:1 port of applyHash) ----------
 
+  // Strict route enum — unknown routes log a warn and fall back to
+  // 'traces' explicitly. Add new views here as they ship (export,
+  // settings, dashboard, etc.) so typos surface immediately.
+  const KNOWN_VIEWS: readonly View[] = ['traces', 'healthz'];
+
   function applyHash(): void {
     const h = window.location.hash || '#/traces';
-    // const [_, view, ...rest] = h.split('/');
     const parts = h.split('/');
     const v = (parts[1] || 'traces') as View;
-    view = v === 'healthz' ? 'healthz' : 'traces';
-    // Original: if (state.view === 'traces' && rest[0]) selectTrace(rest[0])
+    if (KNOWN_VIEWS.includes(v)) {
+      view = v;
+    } else {
+      console.warn(`[apilog] unknown route ${h}, falling back to #/traces`);
+      view = 'traces';
+    }
     if (view === 'traces' && parts[2]) {
       const id = parts[2];
       if (id !== selectedId) selectedId = id;
     }
-    // Healthz mount/unmount is handled by the {#if view === 'healthz'}
-    // block below — HealthzView's $effect starts the 5s poller on mount
-    // and clears it on unmount, matching startHealthz / stopHealthz.
-    //
-    // Original: if (state.view === 'traces' && state.traces.length === 0 && state.sessions.length === 0) loadList({ reset: true });
-    // TracesList / SessionsList load on mount automatically, so this is
-    // handled by mounting them when view === 'traces'.
   }
 
   // Listen for browser-driven hash changes. The token-save / parent-link /
@@ -293,7 +294,8 @@
 />
 
 <main>
-  <section id="traces" class="view" class:active={view === 'traces'}>
+  {#if view === 'traces'}
+  <section id="traces">
     <FilterSidebar
       bind:values={filters}
       {knownPaths}
@@ -354,7 +356,7 @@
       {authFetch}
       onSelect={(id) => (selectedId = id)}
     >
-      {#snippet tabBody({ detail, tab }: { detail: TraceDetail; tab: DetailTab })}
+      {#snippet tabBody({ detail, tab, convoIncludeSession, setConvoIncludeSession }: TabBodyCtx)}
         {#if tab === 'conversation'}
           <!-- ConversationTab's Row.path is required; TraceRow.path is optional.
                Fall back to '' so the protocol-detection branches see an empty
@@ -368,6 +370,8 @@
               ts_start: detail.row.ts_start ?? undefined,
             }}
             trace={detail.trace ?? {}}
+            includeSession={convoIncludeSession}
+            onIncludeSessionToggle={setConvoIncludeSession}
           />
         {:else if tab === 'overview'}
           <OverviewTab row={detail.row} />
@@ -387,25 +391,24 @@
       {/snippet}
     </DetailPanel>
   </section>
+  {/if}
 
-  <section id="healthz" class="view" class:active={view === 'healthz'}>
-    {#if view === 'healthz'}
-      {#key healthzReloadKey}
-        <HealthzView {authFetch} {setStatus} />
-      {/key}
-    {/if}
+  {#if view === 'healthz'}
+  <section id="healthz">
+    {#key healthzReloadKey}
+      <HealthzView {authFetch} {setStatus} />
+    {/key}
   </section>
+  {/if}
 </main>
 
 <AuthModal bind:open={authModalOpen} onSaved={onTokenSaved} />
 
 <style>
   /* ---------- main shell ----------
-     Mirrors the original `main` + `.view` rules from index.html lines
-     68-71. `flex: 1; overflow: hidden` so the inner panels (filters,
-     list, detail) own their own scroll regions. `.view` is display:none
-     by default and switched on via .active — this matches the original
-     two-view layout (traces / healthz) without needing a router lib.
+     `flex: 1; overflow: hidden` so the inner panels (filters, list,
+     detail) own their own scroll regions. Only one view is mounted at
+     a time (via {#if view === ...}) so we don't need .active toggling.
   */
   main {
     flex: 1;
@@ -413,17 +416,16 @@
     display: flex;
     min-height: 0;
   }
-  .view {
+
+  /* ---------- traces view: filter / list / detail ----------
+     Same horizontal three-pane layout the original used. */
+  #traces {
     flex: 1;
-    display: none;
+    display: flex;
+    flex-direction: row;
     min-height: 0;
     min-width: 0;
   }
-  .view.active { display: flex; }
-
-  /* ---------- traces view: filter / list / detail ----------
-     Same horizontal three-pane layout the original used at lines 73-74. */
-  #traces { flex-direction: row; }
 
   /* ---------- list pane ----------
      Width 52%, min/max, right border, vertical stack: list-mode toggle
@@ -482,11 +484,14 @@
   }
 
   /* ---------- healthz view container ----------
-     Original #healthz (line 348): column layout with padding so cards
-     don't run to the edge. HealthzView owns its own .cards grids. */
+     Column layout with padding so cards don't run to the edge.
+     HealthzView owns its own .cards grids. */
   #healthz {
+    flex: 1;
+    display: flex;
     flex-direction: column;
     padding: 0;
     overflow: auto;
+    min-height: 0;
   }
 </style>

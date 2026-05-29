@@ -35,6 +35,17 @@
   export type TraceDetail = { row: TraceRow; trace?: TraceBlob };
 
   export type DetailTab = 'conversation' | 'overview' | 'headers' | 'body' | 'events' | 'session' | 'replay';
+
+  // Snippet args for tabBody. Some tab-specific state lives here on
+  // DetailPanel rather than inside the tab body (which gets remounted
+  // on every tab switch) so it survives switching tabs within one
+  // selected trace. Reset on traceId change — see the $effect below.
+  export type TabBodyCtx = {
+    detail: TraceDetail;
+    tab: DetailTab;
+    convoIncludeSession: boolean;
+    setConvoIncludeSession: (v: boolean) => void;
+  };
 </script>
 
 <script lang="ts">
@@ -68,7 +79,7 @@
     traceId: string | null;
     authFetch: (path: string, opts?: RequestInit) => Promise<Response>;
     onSelect?: (id: string) => void;
-    tabBody?: Snippet<[{ detail: TraceDetail; tab: DetailTab }]>;
+    tabBody?: Snippet<[TabBodyCtx]>;
   };
 
   let { traceId, authFetch, onSelect, tabBody }: Props = $props();
@@ -79,6 +90,10 @@
   let detailTab = $state<DetailTab>('conversation');
   let loadState = $state<'idle' | 'loading' | 'error'>('idle');
   let loadError = $state<string>('');
+
+  // Tab-spanning state hoisted up so it survives tab switches within
+  // one selected trace. ConversationTab's checkbox: see TabBodyCtx.
+  let convoIncludeSession = $state<boolean>(false);
 
   // ---------- selectTrace: fetch + hash + reset ----------
   //
@@ -91,6 +106,7 @@
     const id = traceId;
     detail = null;
     detailTab = 'conversation';
+    convoIncludeSession = false;
     if (!id) {
       loadState = 'idle';
       return;
@@ -236,7 +252,12 @@
     </div>
     <div class="body" id="detail-panel">
       {#if tabBody}
-        {@render tabBody({ detail, tab: detailTab })}
+        {@render tabBody({
+          detail,
+          tab: detailTab,
+          convoIncludeSession,
+          setConvoIncludeSession: (v) => (convoIncludeSession = v),
+        })}
       {/if}
     </div>
   {/if}

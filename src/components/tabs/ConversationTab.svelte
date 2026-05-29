@@ -79,18 +79,19 @@
   interface Props {
     row: Row;
     trace: Trace;
+    // Hoisted to DetailPanel so the checkbox survives tab switches
+    // within one selected trace. Reset on traceId change by the parent.
+    includeSession: boolean;
+    onIncludeSessionToggle: (v: boolean) => void;
   }
 
-  const { row, trace }: Props = $props();
+  const { row, trace, includeSession, onIncludeSessionToggle }: Props = $props();
 
   // ---------- session-include checkbox ----------
   //
-  // The original holds this on a global `state.convoIncludeSession`.
-  // In the port it's local component state; persists across re-renders
-  // of this tab for the lifetime of the component, matching the
-  // original's behavior of resetting when the user navigates away.
-
-  let convoIncludeSession = $state(false);
+  // Checkbox state lives on DetailPanel (so it survives tab switches
+  // within one selected trace). DetailPanel resets it to false on every
+  // traceId change, matching the original's reset-on-navigate semantic.
 
   // The disabled-state mirrors the original: no session → checkbox
   // disabled (and toggling it has no effect).
@@ -343,7 +344,7 @@
   // Compute the turns to render. For single-trace mode this is a
   // derived value; for session mode it's the loaded transcript.
   const renderedTurns = $derived.by<Turn[]>(() => {
-    if (!convoIncludeSession || !row.session_root_id) {
+    if (!includeSession || !row.session_root_id) {
       return buildSingleTraceTurns();
     }
     if (transcript.kind === 'ready' || transcript.kind === 'idle') {
@@ -356,7 +357,7 @@
   // changes while it's already enabled), kick off the multi-trace
   // fetch. When disabled, drop any in-flight state.
   $effect(() => {
-    if (!convoIncludeSession || !row.session_root_id) {
+    if (!includeSession || !row.session_root_id) {
       transcript = { kind: 'idle', turns: [] };
       return;
     }
@@ -467,16 +468,17 @@
   <label>
     <input
       type="checkbox"
-      bind:checked={convoIncludeSession}
+      checked={includeSession}
+      onchange={(e) => onIncludeSessionToggle((e.currentTarget as HTMLInputElement).checked)}
       disabled={!hasSession}
     />
     include earlier turns from this session ({shortId(row.session_root_id)})
   </label>
 </div>
 
-{#if convoIncludeSession && hasSession && transcript.kind === 'loading'}
+{#if includeSession && hasSession && transcript.kind === 'loading'}
   <div class="muted">loading session transcript…</div>
-{:else if convoIncludeSession && hasSession && transcript.kind === 'error'}
+{:else if includeSession && hasSession && transcript.kind === 'error'}
   <div class="err">session transcript failed: {transcript.message}</div>
 {:else if renderedTurns.length === 0}
   <div class="muted">no extractable conversation</div>
