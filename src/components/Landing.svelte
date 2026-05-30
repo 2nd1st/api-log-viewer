@@ -85,14 +85,18 @@
 
   // ---------- healthz state ----------
   //
-  // Only the three fields STATUS reads (uptime_seconds + appended +
-  // total_bytes) matter now that the INTERNAL card grid is gone. The
-  // wider counters type is kept narrow so type errors surface if the
-  // backend shape drifts.
+  // Only the four fields STATUS reads (appended + total_bytes +
+  // total_media_files + uptime_seconds for the bytes/h rate) matter
+  // now that the INTERNAL card grid is gone and R8 has swapped the
+  // service-perf cells (proxy / api / uptime) for content-volume
+  // cells (traces / data / media / last-write). The wider counters
+  // type is kept narrow so type errors surface if the backend shape
+  // drifts.
 
   interface HealthzCounters {
     appended?: number;
     total_bytes?: number;
+    total_media_files?: number;
   }
 
   interface Healthz {
@@ -131,25 +135,41 @@
     lastPollAt > 0 && now - lastPollAt > 30_000,
   );
 
-  const uptimeLabel = $derived.by(() => {
-    const s = healthz?.uptime_seconds;
-    if (s == null) return '—';
-    if (s < 60) return `${Math.floor(s)}s`;
-    if (s < 3600) return `${Math.floor(s / 60)}m`;
-    if (s < 86_400) return `${Math.floor(s / 3600)}h`;
-    return `${Math.floor(s / 86_400)}d`;
-  });
-
   const dataDirLabel = $derived.by(() => {
     const b = healthz?.counters?.total_bytes;
     if (b == null) return '—';
     return humanBytes(b);
   });
 
+  // bytes/hour estimated from total_bytes / uptime_seconds. The
+  // STATUS DATA cell renders this below the headline as a content-
+  // volume rate (operator quote: "dump 了多少内容"). Em-dash on
+  // missing or zero-uptime input — better silent fallback than a
+  // bogus "Infinity B/h".
+  const dataRateLabel = $derived.by(() => {
+    const b = healthz?.counters?.total_bytes;
+    const s = healthz?.uptime_seconds;
+    if (b == null || !s || s <= 0) return '—';
+    return humanBytes((b / s) * 3600);
+  });
+
   const tracesTotalLabel = $derived.by(() => {
     const n = healthz?.counters?.appended;
     if (n == null) return '—';
     return n.toLocaleString();
+  });
+
+  const mediaTotalLabel = $derived.by(() => {
+    const n = healthz?.counters?.total_media_files;
+    if (n == null) return '—';
+    return n.toLocaleString();
+  });
+
+  // Per-kind breakdown would need per-trace detail fetches (the list
+  // endpoint only exposes media_count as an int). R8 ships the total
+  // file count only; operator can click into a trace to see kinds.
+  const mediaCountForSubline = $derived.by(() => {
+    return healthz?.counters?.total_media_files ?? 0;
   });
 
   // Newest ts_start in the sample → relative-age label. Falls back to
@@ -315,28 +335,26 @@
         {stalled ? t('home.sampleStalled') : t('home.sampleLive')}
       </span>
     </div>
-    <div class="metric-row">
-      <div class="metric">
-        <div class="m-label">{t('home.proxy')}</div>
-        <div class="m-value">:7861</div>
-      </div>
-      <div class="metric">
-        <div class="m-label">{t('home.api')}</div>
-        <div class="m-value">:7862</div>
-      </div>
-      <div class="metric">
-        <div class="m-label">{t('home.uptime')}</div>
-        <div class="m-value">{uptimeLabel}</div>
-      </div>
-      <div class="metric">
+    <div class="status-strip">
+      <div class="status-cell">
         <div class="m-label">{t('home.traces')}</div>
         <div class="m-value m-value-lg">{tracesTotalLabel}</div>
       </div>
-      <div class="metric">
+      <div class="status-cell">
         <div class="m-label">{t('home.data')}</div>
         <div class="m-value m-value-lg">{dataDirLabel}</div>
+        <div class="cell-sub">{t('home.dataRate', { rate: dataRateLabel })}</div>
       </div>
-      <div class="metric">
+      <div class="status-cell">
+        <div class="m-label">{t('home.media')}</div>
+        <div class="m-value m-value-lg">{mediaTotalLabel}</div>
+        <div class="cell-sub">
+          {mediaCountForSubline > 0
+            ? t('home.mediaFiles', { n: mediaCountForSubline.toLocaleString() })
+            : '—'}
+        </div>
+      </div>
+      <div class="status-cell">
         <div class="m-label">{t('home.lastWrite')}</div>
         <div class="m-value">{lastWriteLabel}</div>
       </div>
@@ -536,7 +554,51 @@
     padding: var(--space-2) 0;
   }
 
-  /* ---------- metric row (STATUS + TOKEN USAGE) ---------- *
+  /* ---------- STATUS strip (R8 content-volume cells) ---------- *
+   *
+   * Phase 2 A R8 swap: the STATUS strip is now 4 equal-width content-
+   * volume cells (TRACES / DATA / MEDIA / LAST WRITE), each rendered
+   * as its own micro-card via the shared block chrome — --surface bg
+   * + 1px --border + var(--radius-md) 6px corners + var(--space-4)
+   * padding. The single-accent rule is preserved (no --accent on
+   * these cells — accent stays reserved for active state / focus /
+   * palette selection).
+   *
+   * Layout is CSS grid 4×1fr rather than the auto-fit minmax pattern
+   * used by .metric-row, because the operator-mandated cut from 6
+   * cells to 4 means we have room to commit to a fixed 4-up layout
+   * at every breakpoint above ~640px. The micro-card chrome reads
+   * better when each cell is wide enough to right-align a multi-
+   * digit headline without wrapping.
+   */
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+  }
+  .status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-4);
+  }
+  .cell-sub {
+    font-family: var(--font-sans);
+    font-size: var(--size-meta);
+    color: var(--fg-dim);
+    text-align: right;
+    line-height: 1.2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- metric row (TOKEN USAGE) ---------- *
    *
    * Vercel-aesthetic delta: label sits top-left in small uppercase sans;
    * value sits below right-aligned in sans semibold display size. The
