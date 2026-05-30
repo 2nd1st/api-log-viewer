@@ -33,7 +33,7 @@
   import { getTheme, toggleTheme } from '../lib/theme';
   import { getLang, setLang, t } from '../lib/i18n.svelte';
 
-  export type View = 'landing' | 'traces' | 'export' | 'settings';
+  export type View = 'landing' | 'traces' | 'plugins' | 'export' | 'settings';
   export type StatusLevel = '' | 'bad' | 'warn';
 
   interface Props {
@@ -73,6 +73,11 @@
       href="#/traces"
       class:active={view === 'traces'}
     >{t('ui.nav.traces')}</a>
+    <a
+      data-view="plugins"
+      href="#/plugins"
+      class:active={view === 'plugins'}
+    >{t('ui.nav.plugins')}</a>
     <a
       data-view="export"
       href="#/export"

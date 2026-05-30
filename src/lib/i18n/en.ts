@@ -9,6 +9,7 @@ export const en: Record<string, string> = {
   // ---------- ui (nav, header, generic verbs) ----------
   'ui.nav.home': 'Home',
   'ui.nav.traces': 'Traces',
+  'ui.nav.plugins': 'Plugins',
   'ui.nav.export': 'Export',
   'ui.nav.settings': 'Settings',
   'ui.live': 'live',

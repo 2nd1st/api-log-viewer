@@ -12,6 +12,7 @@ export const zh: Record<string, string> = {
   // ---------- ui ----------
   'ui.nav.home': '主页',
   'ui.nav.traces': '记录',
+  'ui.nav.plugins': '插件',
   'ui.nav.export': '导出',
   'ui.nav.settings': '设置',
   'ui.live': '在线',

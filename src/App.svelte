@@ -44,6 +44,7 @@
   import type { TabBodyCtx } from './components/DetailPanel.svelte';
   import Landing from './components/Landing.svelte';
   import Export from './components/Export.svelte';
+  import Plugins from './components/Plugins.svelte';
   import Settings from './components/Settings.svelte';
   import AuthModal from './components/AuthModal.svelte';
   import CommandPalette from './components/CommandPalette.svelte';
@@ -57,7 +58,7 @@
 
   // ---------- top-level state ----------
 
-  type View = 'landing' | 'traces' | 'export' | 'settings';
+  type View = 'landing' | 'traces' | 'plugins' | 'export' | 'settings';
 
   let view = $state<View>('landing');
 
@@ -111,7 +112,7 @@
   // #/dashboard is a legacy alias for #/landing — kept routable so old
   // bookmarks still land somewhere, with a console.warn + replaceState
   // to the canonical route.
-  const KNOWN_VIEWS: readonly View[] = ['landing', 'traces', 'export', 'settings'];
+  const KNOWN_VIEWS: readonly View[] = ['landing', 'traces', 'plugins', 'export', 'settings'];
 
   function applyHash(): void {
     const h = window.location.hash;
@@ -252,6 +253,12 @@
   </section>
   {/if}
 
+  {#if view === 'plugins'}
+  <section id="plugins">
+    <Plugins {authFetch} />
+  </section>
+  {/if}
+
   {#if view === 'settings'}
   <section id="settings">
     <Settings {authFetch} onOpenAuthModal={() => (authModalOpen = true)} />
@@ -349,6 +356,7 @@
 
   #landing,
   #export,
+  #plugins,
   #settings {
     flex: 1;
     display: flex;
