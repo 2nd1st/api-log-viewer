@@ -240,45 +240,44 @@
 </aside>
 
 <style>
-  /* Mirrors the original #filters CSS rules from index.html, translated
-     onto the zinc palette in app.css:
-       --line       -> --border
-       --line-2     -> --border-strong
-       --panel      -> --bg-elev
-       --muted      -> --fg-muted
-       --muted-2    -> --fg-dim
-       --fg-dim     -> --fg-muted   (same idea — secondary text)
-       --r          -> --radius
-     The structure (width, padding, group spacing, label uppercase,
-     input/select styling, custom select chevron, actions row with a
-     primary button) is preserved 1:1. */
+  /* Phase 2 C density pass — Phase L canonical tokens.
+     No bg fills beyond var(--surface). No drop shadows. No gradients
+     beyond the functional <select> chevron. Hairline dividers between
+     groups; outline-only buttons. */
 
   #filters {
     width: 208px;
     flex: none;
-    padding: 12px 12px 16px;
+    padding: var(--space-3) var(--space-3) var(--space-4);
     border-right: 1px solid var(--border);
-    background: var(--bg-elev);
+    background: var(--surface);
     overflow: auto;
   }
 
   #filters .group {
-    margin-bottom: 12px;
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border);
+  }
+  #filters .group:last-of-type {
+    border-bottom: 0;
   }
 
   #filters label {
     display: block;
-    font-size: 10.5px;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
     color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-1);
   }
 
   #filters label .hint {
     color: var(--fg-dim);
     text-transform: none;
-    font-size: 9.5px;
+    letter-spacing: 0;
+    font-size: var(--size-label);
   }
 
   #filters .input,
@@ -287,26 +286,28 @@
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 5px 7px;
-    font-family: var(--mono);
-    font-size: 11.5px;
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: var(--size-input);
     line-height: 1.4;
     outline: none;
+    box-shadow: none;
   }
   #filters .input:focus,
   #filters select:focus {
-    border-color: var(--border-strong);
+    border-color: var(--accent);
   }
 
   #filters select {
     appearance: none;
+    /* Functional dropdown chevron — not a decorative fill. */
     background-image:
       linear-gradient(45deg, transparent 50%, var(--fg-muted) 50%),
       linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%);
     background-position:
-      calc(100% - 14px) 9px,
-      calc(100% - 9px) 9px;
+      calc(100% - 14px) 12px,
+      calc(100% - 9px) 12px;
     background-size:
       5px 5px,
       5px 5px;
@@ -316,30 +317,32 @@
 
   #filters .actions {
     display: flex;
-    gap: 6px;
-    margin-top: 16px;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
   }
   #filters .actions button {
     flex: 1;
-    background: var(--bg);
+    background: transparent;
     color: var(--fg-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 5px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
     cursor: pointer;
-    font: inherit;
-    font-size: 11.5px;
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
+    box-shadow: none;
   }
   #filters .actions button:hover {
     color: var(--fg);
-    border-color: var(--border-strong);
+    border-color: var(--fg);
   }
   #filters .actions button.primary {
-    background: var(--accent);
-    color: #0a1714;
-    border-color: var(--accent);
+    background: transparent;
+    color: var(--fg-muted);
+    border-color: var(--border-strong);
   }
   #filters .actions button.primary:hover {
-    background: var(--accent-dim);
+    color: var(--fg);
+    border-color: var(--fg);
   }
 </style>

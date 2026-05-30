@@ -451,51 +451,63 @@
 </div>
 
 <style>
-  /* Same .card + .kv pattern as OverviewTab — single accent, no
-     role fills, edges + spacing only. */
+  /* Phase 2 C density pass — Phase L canonical tokens.
+     Card chrome stripped; sections separated by a top hairline. Label
+     left mono (per per-file rule — the dt column reads as data keys).
+     Toggle switches use surface-elevated track + accent on-indicator
+     via appearance:none restyle of the native checkbox. */
 
   .settings {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-4);
+    gap: var(--space-4);
     padding: 0;
   }
 
+  /* Strip card chrome — top hairline + uppercase section label only. */
   .card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
+    border: 0;
+    border-top: 1px solid var(--border);
+    background: transparent;
+    padding-top: var(--space-3);
   }
   .card h3 {
-    margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    font-size: 10px;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
+    background: transparent;
+    border: 0;
   }
 
   .kv {
     margin: 0;
     display: grid;
     grid-template-columns: 180px 1fr;
-    font-size: 12px;
+    column-gap: var(--space-3);
+    row-gap: 0;
+    font-size: var(--size-input);
   }
   .kv dt {
-    padding: 8px var(--gap-3);
-    color: var(--fg-dim);
+    padding: 6px 0;
+    color: var(--fg-muted);
     border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--sans);
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
+    display: flex;
+    align-items: center;
   }
   .kv dd {
     margin: 0;
-    padding: 8px var(--gap-3);
+    padding: 6px 0;
     border-bottom: 1px solid var(--border);
     color: var(--fg);
+    font-size: var(--size-input);
     overflow-wrap: anywhere;
   }
   .kv dt:last-of-type,
@@ -504,31 +516,105 @@
   .row {
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
+    gap: var(--space-2);
+  }
+
+  /* Inputs match FilterSidebar. */
+  .kv input[type="text"],
+  .kv select {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: var(--size-input);
+    line-height: 1.4;
+    outline: none;
+    box-shadow: none;
+  }
+  .kv input[type="text"]:focus,
+  .kv select:focus {
+    border-color: var(--accent);
   }
   .row input[type="text"] {
     flex: 1 1 auto;
     min-width: 0;
-    font-family: var(--mono);
-    font-size: 12px;
+  }
+
+  /* Outline buttons match FilterSidebar Apply. */
+  .kv button {
+    background: transparent;
+    color: var(--fg-muted);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
+    cursor: pointer;
+    box-shadow: none;
+  }
+  .kv button:hover {
+    color: var(--fg);
+    border-color: var(--fg);
+  }
+
+  /* Toggle switch — restyle native checkbox via appearance:none.
+     28px wide track, surface-elevated bg, hairline border, accent
+     dot indicator when checked. No drop shadow. */
+  .kv input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 28px;
+    height: 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    margin: 0;
+    flex: none;
+  }
+  .kv input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-sm);
+    background: var(--border-strong);
+    transition: left 120ms ease-out, background 120ms ease-out;
+  }
+  .kv input[type="checkbox"]:checked::after {
+    left: 15px;
+    background: var(--accent);
+  }
+  .kv input[type="checkbox"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .kv input[type="checkbox"]:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .note {
-    margin-top: 4px;
-    font-size: 11px;
+    margin-top: var(--space-1);
+    font-size: var(--size-meta);
     color: var(--fg-dim);
     line-height: 1.5;
   }
   .note code {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
     color: var(--fg-muted);
   }
 
-  /* Tiny "saved" hint — fades in/out on persist. No fill, just
-     accent text, restrained per PHILOSOPHY. */
+  /* Tiny "saved" hint — fades in/out on persist. */
   .hint {
-    font-size: 11px;
+    font-size: var(--size-meta);
     color: var(--accent);
     opacity: 0;
     transition: opacity 160ms ease-out;
@@ -538,6 +624,6 @@
   }
 
   .dim { color: var(--fg-dim); }
-  .err { padding: 10px var(--gap-3); color: var(--err); font-size: 12px; }
-  .foot { padding: var(--gap-2) var(--gap-3); font-size: 11px; line-height: 1.4; }
+  .err { padding: var(--space-2) 0; color: var(--err); font-size: var(--size-body); }
+  .foot { padding: var(--space-2) 0; font-size: var(--size-meta); line-height: 1.4; }
 </style>

@@ -104,90 +104,99 @@
 </div>
 
 <style>
-  /* Mirrors the original .modal-bg / .modal rules from index.html,
-     translated to the new CSS variable names in app.css
-     (--border instead of --line, --bg-elev instead of --panel,
-     --fg-muted instead of --muted, --radius instead of --r). */
+  /* Phase 2 C density pass — Phase L canonical tokens.
+     Modal panel: surface, 1px border, radius-md, max-width 360px,
+     padding space-6. Backdrop: bg at 80% (var(--bg-overlay)). NO drop
+     shadow. Title 13px sans var(--fg). Save button outline style. */
 
   .modal-bg {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.66);
+    background: var(--bg-overlay);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 100;
-    backdrop-filter: blur(2px);
   }
   .modal-bg.show {
     display: flex;
   }
 
   .modal {
-    background: var(--bg-elev);
-    padding: 18px 20px;
+    background: var(--surface);
+    padding: var(--space-6);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 460px;
+    border-radius: var(--radius-md);
+    width: 360px;
     max-width: 90vw;
+    box-shadow: none;
   }
   .modal h2 {
-    margin: 0 0 8px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-sans);
+    font-size: var(--size-input);
+    color: var(--fg);
     font-weight: 500;
   }
   .modal p {
     color: var(--fg-muted);
-    font-size: 11.5px;
-    margin: 0 0 12px;
+    font-size: var(--size-meta);
+    margin: 0 0 var(--space-3);
     line-height: 1.55;
   }
   .modal p code {
     background: var(--bg);
     padding: 1px 4px;
-    border-radius: 2px;
-    font-size: 11px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .modal input {
     width: 100%;
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 7px 9px;
-    font-family: var(--mono);
-    font-size: 11.5px;
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: var(--size-input);
+    line-height: 1.4;
     outline: none;
+    box-shadow: none;
   }
   .modal input:focus {
-    border-color: var(--border-strong);
+    border-color: var(--accent);
   }
   .btn-row {
     display: flex;
-    gap: 6px;
-    margin-top: 10px;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
     justify-content: flex-end;
   }
   .modal button {
-    border: none;
-    padding: 6px 14px;
-    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-muted);
+    border: 1px solid var(--border-strong);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font: inherit;
-    font-size: 11.5px;
-  }
-  .modal button.primary {
-    background: var(--accent);
-    color: #0a1714;
-  }
-  .modal button.secondary {
-    background: var(--bg);
-    color: var(--fg-dim);
-    border: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
+    box-shadow: none;
   }
   .modal button:hover {
-    opacity: 0.9;
+    color: var(--fg);
+    border-color: var(--fg);
+  }
+  .modal button.primary,
+  .modal button.secondary {
+    background: transparent;
+    color: var(--fg-muted);
+    border: 1px solid var(--border-strong);
+  }
+  .modal button.primary:hover,
+  .modal button.secondary:hover {
+    color: var(--fg);
+    border-color: var(--fg);
   }
 </style>

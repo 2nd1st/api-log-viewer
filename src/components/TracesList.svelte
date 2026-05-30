@@ -384,39 +384,38 @@
 </table>
 
 <style>
-  /* Mirrors the original #list table styles (index.html ~lines 116-148),
-     translated onto the zinc palette in app.css:
-       --line  -> --border
-       --panel -> --bg-elev
-       --panel-2 -> --bg-elev-2
-       --muted / --fg-dim -> --fg-muted / --fg-dim
-     Scoped so SessionsList can keep its own copy without collision. */
+  /* Phase 2 C density pass — Phase L canonical tokens.
+     11px mono cells, 24px row height (8px vertical padding), hairline
+     between rows only, NO row bg fills. Status color via text only,
+     not bg. Hover: surface-elevated bg + 2px accent left indicator
+     (inset box-shadow — not a drop shadow). */
 
   table {
     width: 100%;
     border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   thead {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: var(--bg-elev);
+    background: var(--surface);
   }
   th {
     text-align: left;
-    padding: 7px 10px;
+    padding: 6px 10px 4px;
     color: var(--fg-muted);
+    font-family: var(--font-sans);
     font-weight: 500;
-    font-size: 10px;
+    font-size: var(--size-label);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
   td {
-    padding: 5px 10px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
     overflow: hidden;
@@ -430,47 +429,48 @@
   td.sess { width: 80px; color: var(--fg-muted); }
 
   tbody tr { cursor: pointer; }
-  tbody tr:hover { background: var(--bg-elev-2); }
+  tbody tr:hover {
+    background: var(--surface-elevated);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
   tbody tr.selected {
-    background: rgba(94, 234, 212, 0.08);
+    background: var(--surface-elevated);
     box-shadow: inset 2px 0 0 var(--accent);
   }
 
-  /* status-class color hooks (defined here so the component is
-     self-contained; identical to globals .st-2/.st-4/.st-5/.st-x in the
-     original index.html lines 145-148). */
+  /* Status-class color hooks — text color only, NO bg fill. */
   td.s.st-2 { color: var(--ok); }
   td.s.st-4 { color: var(--warn); }
   td.s.st-5 { color: var(--err); }
   td.s.st-x { color: var(--fg-muted); }
 
-  /* Thin auto-refresh toolbar above the table. Restrained — monospace,
-     dim labels, the select inherits the global input styles. */
+  /* Thin auto-refresh toolbar above the table. */
   .toolbar {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--gap-2);
-    padding: var(--gap-1) var(--gap-2);
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
     border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--mono);
-    font-size: 11px;
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .ar {
     display: inline-flex;
     align-items: center;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     color: var(--fg-dim);
   }
   .ar-label {
+    font-family: var(--font-sans);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 10px;
+    font-size: var(--size-label);
   }
   .ar select {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
     padding: 1px 4px;
   }
   .ar-state {

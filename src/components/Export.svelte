@@ -326,15 +326,16 @@
 </div>
 
 <style>
-  /* Reuses the OverviewTab .card / .kv / .err / .dim / .foot grammar so
-     this page reads as the same visual idiom. No new colors, no new
-     role fills — just edges and spacing. */
+  /* Phase 2 C density pass — Phase L canonical tokens.
+     Card chrome stripped; inputs match FilterSidebar; outline button
+     matches FilterSidebar Apply. No bg fills beyond var(--surface),
+     no shadows, no gradients beyond the functional <select> chevron. */
 
   .export {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-4);
-    padding: var(--gap-4);
+    gap: var(--space-4);
+    padding: var(--space-4);
     overflow: auto;
     flex: 1;
     min-height: 0;
@@ -344,84 +345,94 @@
   .head {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-1);
+    gap: var(--space-1);
   }
   .head .title {
-    font-size: 10px;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
   }
   .head .subtitle {
-    font-size: 12px;
+    font-size: var(--size-body);
     color: var(--fg-dim);
   }
 
+  /* Card chrome stripped — just a hairline above the section title
+     groups, no panel fills, no enclosing border. */
   .card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
+    border: 0;
+    border-top: 1px solid var(--border);
+    background: transparent;
+    padding-top: var(--space-3);
   }
   .card h3 {
-    margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    font-size: 10px;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
+    background: transparent;
+    border: 0;
   }
 
-  /* Form grid: label on the left, control on the right. The <datalist>
-     elements render as display:none by default, so they sit invisibly
-     in the grid cells without disturbing the layout. */
+  /* Form: stacked label-above-input rows. Inputs match FilterSidebar
+     density. No row dividers beyond inter-group spacing. */
   .form {
-    display: grid;
-    grid-template-columns: 140px 1fr;
-    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
   .form .row {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
   }
   .form label {
-    padding: 6px var(--gap-3);
-    color: var(--fg-dim);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--sans);
-    font-size: 12px;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     display: flex;
     align-items: center;
     gap: 6px;
+    background: transparent;
+    border: 0;
+    padding: 0;
   }
   .form label .hint {
     color: var(--fg-dim);
-    font-size: 10.5px;
+    font-size: var(--size-label);
     text-transform: none;
     letter-spacing: 0;
   }
   .form .input,
   .form select {
     margin: 0;
-    border: 0;
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    padding: 6px var(--gap-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
     background: var(--bg);
     color: var(--fg);
-    font-family: var(--mono);
-    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-size: var(--size-input);
+    line-height: 1.4;
     outline: none;
+    box-shadow: none;
   }
   .form .input:focus,
   .form select:focus {
-    border-bottom-color: var(--accent-dim);
+    border-color: var(--accent);
   }
   .form select {
     appearance: none;
+    /* Functional dropdown chevron. */
     background-image:
       linear-gradient(45deg, transparent 50%, var(--fg-muted) 50%),
       linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%);
@@ -434,35 +445,30 @@
     background-repeat: no-repeat;
     padding-right: 22px;
   }
-  .form .row:last-child label,
-  .form .row:last-child .input,
-  .form .row:last-child select {
-    border-bottom: 0;
-  }
 
-  /* Actions row matches FilterSidebar.actions, including the primary
-     button rule. Single .primary that uses var(--accent) with --bg text
-     — same pattern as the Apply button. */
+  /* Generate button — same outline style as FilterSidebar Apply. */
   .actions {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
-    padding: var(--gap-3);
+    gap: var(--space-2);
+    padding: 0;
   }
   .actions .primary {
     align-self: flex-start;
-    background: var(--accent);
-    color: var(--bg);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius);
-    padding: 6px 14px;
-    font: inherit;
-    font-size: 12px;
+    background: transparent;
+    color: var(--fg-muted);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
     cursor: pointer;
+    box-shadow: none;
   }
   .actions .primary:hover {
-    background: var(--accent-dim);
-    border-color: var(--accent-dim);
+    color: var(--fg);
+    border-color: var(--fg);
+    background: transparent;
   }
   .actions .primary:disabled {
     opacity: 0.45;
@@ -472,15 +478,15 @@
   .dim { color: var(--fg-dim); }
   .err { color: var(--err); }
   .foot {
-    padding: 0 var(--gap-3) var(--gap-3);
-    font-size: 11px;
+    padding: 0;
+    font-size: var(--size-meta);
     line-height: 1.4;
   }
   .debug {
     border-top: 1px solid var(--border);
-    padding: var(--gap-2) var(--gap-3);
-    font-family: var(--mono);
-    font-size: 10.5px;
+    padding: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     overflow-wrap: anywhere;
   }
 </style>
