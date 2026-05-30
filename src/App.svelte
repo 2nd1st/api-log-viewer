@@ -46,10 +46,14 @@
   import Export from './components/Export.svelte';
   import Settings from './components/Settings.svelte';
   import AuthModal from './components/AuthModal.svelte';
+  import CommandPalette from './components/CommandPalette.svelte';
 
   import ConversationTab from './components/tabs/ConversationTab.svelte';
   import OverviewTab from './components/tabs/OverviewTab.svelte';
   import RawTab from './components/tabs/RawTab.svelte';
+
+  import { getTheme, applyTheme } from './lib/theme';
+  import { bindGlobalShortcut } from './lib/keyboard';
 
   // ---------- top-level state ----------
 
@@ -196,10 +200,15 @@
 
   // ---------- boot sequence ----------
   //
+  // 0) Apply the persisted theme BEFORE first render so a light-mode
+  //    reload doesn't flash dark.
   // 1) If no token on disk, pop the modal.
   // 2) If there's no hash, force #/landing so the URL reflects the view.
   // 3) applyHash() picks view + selectedId from the URL.
   $effect(() => {
+    if (typeof window !== 'undefined') {
+      applyTheme(getTheme());
+    }
     if (!getToken()) authModalOpen = true;
     if (typeof window !== 'undefined') {
       if (!window.location.hash) {
@@ -207,6 +216,12 @@
       }
     }
     applyHash();
+  });
+
+  // ---------- global keyboard shortcut (Cmd+K palette) ----------
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    return bindGlobalShortcut();
   });
 
   const statusLevel = $derived(
@@ -321,6 +336,8 @@
 </main>
 
 <AuthModal bind:open={authModalOpen} onSaved={onTokenSaved} />
+
+<CommandPalette recentTraces={[]} />
 
 <style>
   main {

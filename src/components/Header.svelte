@@ -13,9 +13,14 @@
   // #/dashboard route still resolves (App.svelte rewrites it to
   // #/landing on entry) so old bookmarks keep working.
   //
-  // The parent owns `view`, the status text + level, and the click
-  // callbacks. The <a href="#/..."> tags rely on the App.svelte
-  // hashchange listener to drive the actual route change.
+  // Phase L additions (2026-05-30):
+  //   - Theme toggle button between status pill and token chip.
+  //     Single click swaps dark <-> light and persists via lib/theme.
+  //     Inline SVG glyphs only — no icon library.
+  //   - CSS uses the Phase L tokens (--fg-muted, --border, --accent,
+  //     --size-body, --size-meta, --font-mono).
+
+  import { getTheme, toggleTheme } from '../lib/theme';
 
   export type View = 'landing' | 'traces' | 'export' | 'settings';
   export type StatusLevel = '' | 'bad' | 'warn';
@@ -40,6 +45,8 @@
     onRefresh,
     onAuth,
   }: Props = $props();
+
+  let theme = $state(getTheme());
 </script>
 
 <header>
@@ -74,6 +81,31 @@
   >{statusText}</span>
   <button
     type="button"
+    class="theme-toggle"
+    aria-label="Toggle theme"
+    title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+    onclick={() => { theme = toggleTheme(); }}
+  >
+    {#if theme === 'dark'}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    {:else}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2"/>
+        <path d="M12 20v2"/>
+        <path d="M4.93 4.93l1.41 1.41"/>
+        <path d="M17.66 17.66l1.41 1.41"/>
+        <path d="M2 12h2"/>
+        <path d="M20 12h2"/>
+        <path d="M4.93 19.07l1.41-1.41"/>
+        <path d="M17.66 6.34l1.41-1.41"/>
+      </svg>
+    {/if}
+  </button>
+  <button
+    type="button"
     class="icon-btn"
     title="reload"
     onclick={() => onRefresh?.()}
@@ -91,27 +123,22 @@
 </header>
 
 <style>
-  /* Mirrors the original header CSS, translated to app.css palette:
-       --line       -> --border
-       --muted      -> --fg-muted
-       --fg-dim     -> --fg-dim
-       --panel      -> --bg-elev
-       --bad        -> --err
-       --warn       -> --warn
-  */
+  /* Tokens: see app.css. Header uses --surface for fill, --border for
+     the bottom hairline, --fg-muted/--fg for nav contrast, --accent
+     for the active underline. */
   header {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 0 16px;
+    padding: 0 var(--space-4);
     height: 38px;
     flex: none;
     border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
+    background: var(--surface);
   }
   .brand {
-    font-family: var(--mono);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     font-weight: 600;
     color: var(--fg);
     letter-spacing: 0;
@@ -125,15 +152,15 @@
   nav a {
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 var(--space-3);
     color: var(--fg-muted);
-    font-size: 12px;
+    font-size: var(--size-body);
     border-bottom: 1px solid transparent;
     margin-bottom: -1px;
     text-decoration: none;
   }
   nav a:hover {
-    color: var(--fg-dim);
+    color: var(--fg);
     text-decoration: none;
   }
   nav a.active {
@@ -142,12 +169,29 @@
   }
   .spacer { flex: 1; }
   .status {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
     color: var(--fg-muted);
   }
   .status.bad { color: var(--err); }
   .status.warn { color: var(--warn); }
+
+  .theme-toggle {
+    background: transparent;
+    border: 0;
+    color: var(--fg-dim);
+    padding: 4px;
+    cursor: pointer;
+    line-height: 0;
+    border-radius: var(--radius-md);
+  }
+  .theme-toggle:hover { color: var(--fg); }
+  .theme-toggle svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
   .icon-btn {
     background: none;
     border: none;
@@ -156,7 +200,7 @@
     cursor: pointer;
     font: inherit;
     line-height: 1;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
   }
   .icon-btn:hover { color: var(--fg); }
   .icon-btn svg {

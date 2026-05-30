@@ -1,34 +1,98 @@
-/* Base styles. Component-specific styles live scoped inside each .svelte file. */
+/* Base styles. Component-specific styles live scoped inside each .svelte file.
+ *
+ * Phase L token scheme (2026-05-30):
+ *
+ *   - :root carries the dark theme; [data-theme="light"] overrides
+ *     neutrals + status hues. --accent is shared across both.
+ *   - One accent only (`--accent`, teal-300, #5eead4). Accent may appear
+ *     on selection, active tab, focus ring, pair rail. It must NOT
+ *     carry status semantics; --ok / --warn / --err do that.
+ *   - The legacy token names (--bg-elev, --mono, --gap-*, --radius,
+ *     --accent-dim, --sans) are aliased onto the new tokens at the
+ *     bottom of :root so untouched Phase H components keep rendering
+ *     while Phase 2 work migrates references. Phase 2 deletes the
+ *     alias block once those files use the new names directly.
+ *   - Radii capped at 4px (--radius-md). No drop shadows. No nested
+ *     cards. No role background fills.
+ */
 
 :root {
-  /* zinc palette — restrained, no chrome. */
+  /* ---- Phase L tokens (canonical names) ---- */
   --bg: #0a0a0b;
-  --bg-elev: #131316;
-  --bg-elev-2: #1c1c20;
-  --border: #2a2a30;
-  --border-strong: #3a3a42;
-  --fg: #e4e4e7;
+  --surface: #18181b;
+  --surface-elevated: #1f1f23;     /* selected row / palette panel */
+  --fg: #fafafa;
   --fg-muted: #a1a1aa;
   --fg-dim: #71717a;
+  --border: #27272a;
+  --border-strong: #3f3f46;
 
-  /* single accent — teal-300-ish */
+  /* Single accent — teal-300. Shared across dark + light. */
   --accent: #5eead4;
-  --accent-dim: #2dd4bf;
 
   --ok: #4ade80;
-  --warn: #facc15;
+  --warn: #fbbf24;
   --err: #f87171;
 
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --radius-sm: 2px;
+  --radius-md: 4px;
 
-  --gap-1: 4px;
-  --gap-2: 8px;
-  --gap-3: 12px;
-  --gap-4: 16px;
-  --gap-6: 24px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
 
-  --radius: 6px;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --size-label: 10px;             /* uppercase section labels */
+  --size-meta: 11px;              /* mono cells */
+  --size-body: 12px;              /* default UI */
+  --size-input: 13px;
+
+  /* Overlay backdrop used by AuthModal + CommandPalette. */
+  --bg-overlay: rgba(10, 10, 11, 0.8);
+
+  /* ---- Back-compat aliases (Phase L → Phase 2 migration) ----
+   *
+   * The Phase H codebase referenced the legacy names below in ~250
+   * places across components not in Phase 1 scope (FilterSidebar,
+   * TracesList, Landing, DetailPanel, blocks/*, etc.). Removing the
+   * names would silently break those files: CSS custom-property
+   * failures don't fail `svelte-check` or `vite build`, they just
+   * render with no fill, no radius, fallback fonts. So we keep the
+   * old names pointing at the new tokens until Phase 2 migrates each
+   * reference, then this whole alias block is deleted.
+   */
+  --bg-elev: var(--surface);
+  --bg-elev-2: var(--surface-elevated);
+  --accent-dim: var(--accent);
+  --mono: var(--font-mono);
+  --sans: var(--font-sans);
+  --gap-1: var(--space-1);
+  --gap-2: var(--space-2);
+  --gap-3: var(--space-3);
+  --gap-4: var(--space-4);
+  --gap-6: var(--space-6);
+  --radius: var(--radius-md);
+}
+
+[data-theme="light"] {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-elevated: #f4f4f5;
+  --fg: #18181b;
+  --fg-muted: #52525b;
+  --fg-dim: #71717a;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  /* --accent shared: #5eead4 */
+  --ok: #16a34a;
+  --warn: #ca8a04;
+  --err: #dc2626;
+  --bg-overlay: rgba(250, 250, 250, 0.8);
 }
 
 * { box-sizing: border-box; }
@@ -49,7 +113,7 @@ body, #app {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-strong);
@@ -61,8 +125,8 @@ body, #app {
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--sans);
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: var(--size-input);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
@@ -73,14 +137,14 @@ a {
 }
 a:hover { text-decoration: underline; }
 
-code, pre, .mono { font-family: var(--mono); }
+code, pre, .mono { font-family: var(--font-mono); }
 
 button {
   font: inherit;
   color: inherit;
-  background: var(--bg-elev);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   padding: 4px 10px;
   cursor: pointer;
 }
@@ -92,10 +156,10 @@ input, select {
   color: inherit;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   padding: 4px 8px;
 }
 input:focus, select:focus {
   outline: none;
-  border-color: var(--accent-dim);
+  border-color: var(--accent);
 }
