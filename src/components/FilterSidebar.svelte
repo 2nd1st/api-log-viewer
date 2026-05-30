@@ -41,6 +41,7 @@
   //     matching the original's separate f-apply / f-clear handlers.
 
   import { DEFAULT_PATH_FILTER } from '../lib/api';
+  import { t } from '../lib/i18n.svelte';
 
   export interface Filters {
     status: string;
@@ -76,6 +77,25 @@
   const pathOptions = $derived([...knownPaths].filter(Boolean).sort());
   const modelOptions = $derived([...knownModels].filter(Boolean).sort());
   const keyOptions = $derived([...knownKeys].filter(Boolean).sort());
+
+  // Count of active (non-default) filter fields. The path field is
+  // pre-populated with DEFAULT_PATH_FILTER so it only counts when the
+  // operator has actually edited it. limit '100' is the default; only
+  // count when changed. Surfaced as "Apply (N)" so the operator sees
+  // at a glance how many constraints the next request will carry.
+  const activeCount = $derived.by<number>(() => {
+    let n = 0;
+    if ((values.status ?? '').trim()) n++;
+    const p = (values.path ?? '').trim();
+    if (p && p !== '' && p !== DEFAULT_PATH_FILTER && p !== '*') n++;
+    if ((values.model ?? '').trim()) n++;
+    if ((values.key_hash ?? '').trim()) n++;
+    if ((values.session_root_id ?? '').trim()) n++;
+    if ((values.since ?? '').trim()) n++;
+    const lim = (values.limit ?? '').trim();
+    if (lim && lim !== '100') n++;
+    return n;
+  });
 
   function apply() {
     onApply?.();
@@ -117,14 +137,14 @@
 
 <aside id="filters">
   <div class="group">
-    <label for="f-status">status</label>
+    <label for="f-status">{t('filters.status')}</label>
     <select
       id="f-status"
       bind:value={values.status}
       onchange={handleStatusChange}
       onkeydown={handleKeydown}
     >
-      <option value="">any</option>
+      <option value="">{t('ui.any')}</option>
       <option value="2xx">2xx</option>
       <option value="4xx">4xx</option>
       <option value="5xx">5xx</option>
@@ -140,13 +160,13 @@
 
   <div class="group">
     <label for="f-path"
-      >path <span class="hint">(end with * for prefix)</span></label
+      >{t('filters.path')} <span class="hint">{t('filters.hintPrefix')}</span></label
     >
     <input
       class="input"
       id="f-path"
       list="dl-paths"
-      placeholder="/v1/*"
+      placeholder={t('filters.placeholderPath')}
       autocomplete="off"
       bind:value={values.path}
       onkeydown={handleKeydown}
@@ -159,12 +179,12 @@
   </div>
 
   <div class="group">
-    <label for="f-model">model</label>
+    <label for="f-model">{t('filters.model')}</label>
     <input
       class="input"
       id="f-model"
       list="dl-models"
-      placeholder="any"
+      placeholder={t('ui.any')}
       autocomplete="off"
       bind:value={values.model}
       onkeydown={handleKeydown}
@@ -177,12 +197,12 @@
   </div>
 
   <div class="group">
-    <label for="f-keyhash">key_hash</label>
+    <label for="f-keyhash">{t('filters.keyHash')}</label>
     <input
       class="input"
       id="f-keyhash"
       list="dl-keys"
-      placeholder="prefix"
+      placeholder={t('filters.placeholderPrefix')}
       autocomplete="off"
       bind:value={values.key_hash}
       onkeydown={handleKeydown}
@@ -195,11 +215,11 @@
   </div>
 
   <div class="group">
-    <label for="f-session">session_root_id</label>
+    <label for="f-session">{t('filters.sessionRootId')}</label>
     <input
       class="input"
       id="f-session"
-      placeholder="ULID"
+      placeholder={t('filters.placeholderUlid')}
       autocomplete="off"
       bind:value={values.session_root_id}
       onkeydown={handleKeydown}
@@ -207,11 +227,11 @@
   </div>
 
   <div class="group">
-    <label for="f-since">since (ISO 8601)</label>
+    <label for="f-since">{t('filters.sinceIso')}</label>
     <input
       class="input"
       id="f-since"
-      placeholder="2026-05-28T00:00:00Z"
+      placeholder={t('filters.placeholderIsoSince')}
       autocomplete="off"
       bind:value={values.since}
       onkeydown={handleKeydown}
@@ -219,9 +239,9 @@
   </div>
 
   <div class="group">
-    <label for="f-limit">limit</label>
+    <label for="f-limit">{t('filters.limit')}</label>
     <input
-      class="input"
+      class="input num"
       id="f-limit"
       type="number"
       min="1"
@@ -233,9 +253,9 @@
 
   <div class="actions">
     <button type="button" id="f-apply" class="primary" onclick={apply}
-      >Apply</button
+      >{activeCount > 0 ? t('filters.applyWithCount', { n: activeCount }) : t('filters.apply')}</button
     >
-    <button type="button" id="f-clear" onclick={clear}>Clear</button>
+    <button type="button" id="f-clear" onclick={clear}>{t('filters.clear')}</button>
   </div>
 </aside>
 
@@ -293,6 +313,10 @@
     line-height: 1.4;
     outline: none;
     box-shadow: none;
+  }
+  #filters .input.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
   }
   #filters .input:focus,
   #filters select:focus {

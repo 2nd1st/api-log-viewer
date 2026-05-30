@@ -1,5 +1,13 @@
 <script lang="ts">
   import type { ToolCallBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
+
+  // ToolCallBlock.role is always 'assistant' per the type. We keep the
+  // helper anyway for symmetry with the other Block renderers and so
+  // future role expansions don't drift.
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   interface Props {
     block: ToolCallBlock;
@@ -46,7 +54,7 @@
 
 <div class="block block--tool-call" id={`tool-call-${block.tool_id}`}>
   <div class="row row--top">
-    <span class="role">{block.role}</span>
+    <span class="role">{roleLabel(block.role)}</span>
     <div class="meta">
       {#if tokenStr}<span class="meta__item">{tokenStr}</span>{/if}
       <span class="meta__item">{sideStr}</span>
@@ -78,7 +86,7 @@
   {#if prettyInput}
     <pre class="body"><code>{prettyInput}</code></pre>
   {:else}
-    <div class="body body--empty">(no input)</div>
+    <div class="body body--empty">{t('blocks.noInput')}</div>
   {/if}
 </div>
 

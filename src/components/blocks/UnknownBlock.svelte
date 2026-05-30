@@ -7,6 +7,11 @@
   // no role-color bands, single hairline divider, small uppercase role label
   // and a monospace metadata strip on the right.
   import type { UnknownBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
+
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   interface Props {
     block: UnknownBlock;
@@ -72,9 +77,9 @@
 <div class="block block--unknown">
   <div class="header">
     <div class="header-left">
-      <span class="role">{block.role}</span>
+      <span class="role">{roleLabel(block.role)}</span>
       <span class="glyph" aria-hidden="true">?</span>
-      <span class="kind">unknown</span>
+      <span class="kind">{t('blocks.unknown')}</span>
       <span class="sep" aria-hidden="true">·</span>
       <span class="sub" title={subLabel}>{subLabel}</span>
     </div>
@@ -88,7 +93,7 @@
   </div>
 
   {#if block.parse_error}
-    <div class="parse-error">parse_error: {block.parse_error}</div>
+    <div class="parse-error">{t('blocks.parseError', { error: block.parse_error })}</div>
   {/if}
 
   <pre class="body">{pretty}</pre>

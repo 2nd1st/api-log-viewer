@@ -1,5 +1,13 @@
 <script lang="ts">
   import type { ToolResultBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
+
+  // ToolResultBlock.role is always 'tool'. We translate it via the
+  // shared 'blocks.<role>' namespace so other languages can use a
+  // local term (e.g. zh: 工具).
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   interface Props {
     block: ToolResultBlock;
@@ -57,7 +65,7 @@
 
 <div class="block block--tool-result" class:block--err={isError} id={`tool-result-${block.tool_id}`}>
   <div class="block__header">
-    <span class="block__role">{block.role}</span>
+    <span class="block__role">{roleLabel(block.role)}</span>
     <span class="block__glyph" aria-hidden="true">{isError ? '⚠' : '⚙'}</span>
     <span class="block__arrow" title="result of">←</span>
     <span class="block__tool-name mono">{block.tool_name}</span>

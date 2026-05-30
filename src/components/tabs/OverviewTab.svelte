@@ -35,6 +35,7 @@
   import type { StopTone } from '../../lib/stopReason';
   import { shortId, humanBytes } from '../../lib/format';
   import type { TraceBlob, TraceRow } from '../DetailPanel.svelte';
+  import { t } from '../../lib/i18n.svelte';
 
   interface Props {
     row: TraceRow;
@@ -133,7 +134,9 @@
   function truncSignals(signals: string[], max = 4): string {
     if (signals.length === 0) return '';
     const shown = signals.slice(0, max).join(', ');
-    return signals.length > max ? `${shown}, +${signals.length - max} more` : shown;
+    return signals.length > max
+      ? t('overview.signalsMore', { shown, more: signals.length - max })
+      : shown;
   }
 
   // ---------- CONTENT SHAPE ----------
@@ -173,18 +176,18 @@
     const parts: string[] = [];
     const rb: any = trace?.resp?.body;
     if (rb != null) {
-      parts.push(`json body ${humanBytes(bodyBytes(rb))}`);
+      parts.push(t('overview.respJsonBody', { size: humanBytes(bodyBytes(rb)) }));
     }
     const events = trace?.resp?.events;
     if (Array.isArray(events) && events.length > 0) {
-      parts.push(`${events.length} SSE events`);
+      parts.push(t('overview.respSseEvents', { n: events.length }));
     }
     const b64 = trace?.resp?.body_b64;
     if (typeof b64 === 'string' && b64.length > 0) {
-      parts.push(`b64 ${humanBytes(b64.length)}`);
+      parts.push(t('overview.respB64', { size: humanBytes(b64.length) }));
     } else {
       // Mirror the spec example which always reports a b64 column.
-      parts.push('b64 0');
+      parts.push(t('overview.respB64', { size: '0' }));
     }
     return parts.join(' · ');
   });
@@ -331,41 +334,40 @@
 <div class="overview">
   <!-- THIS TRACE -->
   <section class="section">
-    <h3 class="section-label">this trace</h3>
+    <h3 class="section-label">{t('overview.thisTrace')}</h3>
     <dl class="kv">
-      <dt>id</dt>            <dd>{row.id ?? '—'}</dd>
-      <dt>method · path</dt> <dd>{row.method ?? '—'} {row.path ?? ''}</dd>
-      <dt>status</dt>        <dd>{row.status ?? '—'}</dd>
-      <dt>model</dt>         <dd>{row.model ?? '—'}</dd>
-      <dt>duration</dt>      <dd>{fmtMs(durMs)}</dd>
-      <dt>tokens</dt>        <dd>
-        {fmtNum(row.prompt_tokens)} in · {fmtNum(row.completion_tokens)} out
-        {#if row.total_tokens != null} · {fmtNum(row.total_tokens)} total{/if}
+      <dt>{t('overview.id')}</dt>            <dd>{row.id ?? '—'}</dd>
+      <dt>{t('overview.methodPath')}</dt>    <dd>{row.method ?? '—'} {row.path ?? ''}</dd>
+      <dt>{t('overview.status')}</dt>        <dd>{row.status ?? '—'}</dd>
+      <dt>{t('overview.model')}</dt>         <dd>{row.model ?? '—'}</dd>
+      <dt>{t('overview.duration')}</dt>      <dd>{fmtMs(durMs)}</dd>
+      <dt>{t('overview.tokens')}</dt>        <dd>
+        {t('overview.tokensInOut', { in: fmtNum(row.prompt_tokens), out: fmtNum(row.completion_tokens) })}{#if row.total_tokens != null}{t('overview.tokensTotalSuffix', { total: fmtNum(row.total_tokens) })}{/if}
       </dd>
     </dl>
   </section>
 
   <!-- CLIENT & SOURCE -->
   <section class="section">
-    <h3 class="section-label">client &amp; source</h3>
+    <h3 class="section-label">{t('overview.clientSource')}</h3>
     <dl class="kv">
-      <dt>client</dt> <dd>
+      <dt>{t('overview.client')}</dt> <dd>
         <strong>{client.family}</strong>{#if client.version} <span class="dim">{client.version}</span>{/if}
         {#if client.raw && client.family !== client.raw}
           <div class="ua dim">{client.raw}</div>
         {/if}
       </dd>
-      <dt>key</dt>      <dd>{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
-      <dt>upstream</dt> <dd>{row.upstream ?? '—'}</dd>
-      <dt>client ip</dt><dd>{row.client ?? '—'}</dd>
-      <dt>prompt source</dt>
+      <dt>{t('overview.key')}</dt>      <dd>{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
+      <dt>{t('overview.upstream')}</dt> <dd>{row.upstream ?? '—'}</dd>
+      <dt>{t('overview.clientIp')}</dt> <dd>{row.client ?? '—'}</dd>
+      <dt>{t('overview.promptSource')}</dt>
       <dd>
         {#if !systemText}
-          <span class="dim">(no system text)</span>
+          <span class="dim">{t('overview.noSystemText')}</span>
         {:else}
           <strong>{promptSource.source}</strong> <span class="dim">{promptSource.layer}</span>
           {#if promptSource.signals.length > 0}
-            <div class="ua dim">signals: {truncSignals(promptSource.signals)}</div>
+            <div class="ua dim">{t('overview.signals', { list: truncSignals(promptSource.signals) })}</div>
           {/if}
         {/if}
       </dd>
@@ -374,36 +376,36 @@
 
   <!-- CONTENT SHAPE -->
   <section class="section">
-    <h3 class="section-label">content shape</h3>
+    <h3 class="section-label">{t('overview.contentShape')}</h3>
     <dl class="kv">
-      <dt>blocks</dt>
+      <dt>{t('overview.blocks')}</dt>
       <dd>
         {#each Object.entries(counts) as [k, n] (k)}
           {#if n > 0}<span class="chip">{n} {k}</span>{/if}
         {/each}
-        {#if Object.values(counts).every((n) => !n)}<span class="dim">—</span>{/if}
+        {#if Object.values(counts).every((n) => !n)}<span class="dim">{t('ui.dash')}</span>{/if}
       </dd>
-      <dt>tools called</dt>
+      <dt>{t('overview.toolsCalled')}</dt>
       <dd>
         {#if toolInventory.length === 0}
-          <span class="dim">—</span>
+          <span class="dim">{t('ui.dash')}</span>
         {:else}
           <ul class="tool-list">
-            {#each toolInventory as t (t.name)}
-              <li><span class="tool-n">{t.n}×</span> {t.name}</li>
+            {#each toolInventory as ti (ti.name)}
+              <li><span class="tool-n">{ti.n}×</span> {ti.name}</li>
             {/each}
           </ul>
         {/if}
       </dd>
-      <dt>response shape</dt>
-      <dd>{respShape || '—'}</dd>
-      <dt>truncation</dt>
+      <dt>{t('overview.responseShape')}</dt>
+      <dd>{respShape || t('ui.dash')}</dd>
+      <dt>{t('overview.truncation')}</dt>
       <dd>
         {#if !truncatedReq && !truncatedResp}
-          <span class="dim">none</span>
+          <span class="dim">{t('ui.none')}</span>
         {:else}
-          {#if truncatedReq}<span class="badge warn">req truncated</span>{/if}
-          {#if truncatedResp}<span class="badge warn">resp truncated</span>{/if}
+          {#if truncatedReq}<span class="badge warn">{t('overview.truncReq')}</span>{/if}
+          {#if truncatedResp}<span class="badge warn">{t('overview.truncResp')}</span>{/if}
         {/if}
       </dd>
     </dl>
@@ -411,55 +413,51 @@
 
   <!-- MODEL BEHAVIOR -->
   <section class="section">
-    <h3 class="section-label">model behavior</h3>
+    <h3 class="section-label">{t('overview.modelBehavior')}</h3>
     <dl class="kv">
-      <dt>stop reason</dt>
+      <dt>{t('overview.stopReason')}</dt>
       <dd>
         <span class={toneClass(stop.tone)} aria-hidden="true"></span>
         {stop.label}
       </dd>
-      <dt>reasoning blocks</dt>
+      <dt>{t('overview.reasoningBlocks')}</dt>
       <dd>{reasoningCount}</dd>
-      <dt>tool calls</dt>
+      <dt>{t('overview.toolCalls')}</dt>
       <dd>{toolCallCount}</dd>
-      <dt>first reply</dt>
-      <dd>{firstReplyMs == null ? '—' : fmtMs(firstReplyMs)}</dd>
+      <dt>{t('overview.firstReply')}</dt>
+      <dd>{firstReplyMs == null ? t('ui.dash') : fmtMs(firstReplyMs)}</dd>
     </dl>
   </section>
 
   <!-- SESSION -->
   <section class="section">
-    <h3 class="section-label">session</h3>
+    <h3 class="section-label">{t('overview.session')}</h3>
     {#if !row.session_root_id}
-      <div class="dim foot">(no session)</div>
+      <div class="dim foot">{t('overview.noSession')}</div>
     {:else if session.kind === 'loading'}
-      <div class="dim foot">loading session siblings…</div>
+      <div class="dim foot">{t('overview.loadingSession')}</div>
     {:else if session.kind === 'error'}
-      <div class="err">session fetch failed: {session.message}</div>
+      <div class="err">{t('overview.sessionFailed', { message: session.message })}</div>
     {:else if session.kind === 'ready'}
       {@const s = session.stats}
       {@const span = sessionSpanMs()}
       <dl class="kv">
-        <dt>session root</dt> <dd>{shortId(row.session_root_id)}</dd>
-        <dt>turns</dt>        <dd>{s.turns}</dd>
-        <dt>tokens (sum)</dt> <dd>{fmtNum(s.promptTokensTotal)} in · {fmtNum(s.completionTokensTotal)} out</dd>
-        <dt>span</dt>         <dd>{fmtMs(span)}</dd>
-        <dt>models</dt>       <dd>
-          {#if s.distinctModels.length === 0}—
+        <dt>{t('overview.sessionRoot')}</dt> <dd>{shortId(row.session_root_id)}</dd>
+        <dt>{t('overview.turns')}</dt>       <dd>{s.turns}</dd>
+        <dt>{t('overview.tokensSum')}</dt>   <dd>{t('overview.tokensInOut', { in: fmtNum(s.promptTokensTotal), out: fmtNum(s.completionTokensTotal) })}</dd>
+        <dt>{t('overview.span')}</dt>        <dd>{fmtMs(span)}</dd>
+        <dt>{t('overview.models')}</dt>      <dd>
+          {#if s.distinctModels.length === 0}{t('ui.dash')}
           {:else}{s.distinctModels.join(', ')}{/if}
         </dd>
         {#if row.parent_id}
-          <dt>parent trace</dt>
+          <dt>{t('overview.parentTrace')}</dt>
           <dd>
             <a href="#/traces/{row.parent_id}" onclick={(e) => clickParent(e, row.parent_id!)}>{shortId(row.parent_id)}</a>
           </dd>
         {/if}
       </dl>
-      <div class="dim foot">
-        per-block totals across the whole session need fetching every
-        sibling trace — not done in this pass. The numbers above are
-        derived from row metadata only.
-      </div>
+      <div class="dim foot">{t('overview.sessionFoot')}</div>
     {/if}
   </section>
 </div>

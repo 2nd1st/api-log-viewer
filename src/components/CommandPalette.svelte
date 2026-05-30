@@ -18,6 +18,7 @@
   import { onMount } from 'svelte';
   import { onOpenPalette } from '../lib/keyboard';
   import type { TraceRow } from '../lib/trace';
+  import { t } from '../lib/i18n.svelte';
 
   interface Props {
     /** Recent trace rows for the "RECENT TRACES" section. App.svelte
@@ -39,23 +40,27 @@
   let inputEl = $state<HTMLInputElement | null>(null);
 
   // ---------- entries ----------
+  //
+  // ROUTES and PRESETS are derived rather than const so they pick up
+  // the active language. t() reads the lang cell on each call, so any
+  // template using ROUTES/PRESETS re-renders on setLang() flip.
 
-  const ROUTES: Entry[] = [
-    { kind: 'route', label: 'Home', hint: '#/landing', href: '#/landing' },
-    { kind: 'route', label: 'Traces', hint: '#/traces', href: '#/traces' },
-    { kind: 'route', label: 'Export', hint: '#/export', href: '#/export' },
-    { kind: 'route', label: 'Settings', hint: '#/settings', href: '#/settings' },
-  ];
+  const ROUTES: Entry[] = $derived([
+    { kind: 'route', label: t('ui.nav.home'),     hint: '#/landing',  href: '#/landing' },
+    { kind: 'route', label: t('ui.nav.traces'),   hint: '#/traces',   href: '#/traces' },
+    { kind: 'route', label: t('ui.nav.export'),   hint: '#/export',   href: '#/export' },
+    { kind: 'route', label: t('ui.nav.settings'), hint: '#/settings', href: '#/settings' },
+  ]);
 
   // Filter presets — see comment at top of file re: hint vs. href.
   // hint shows the operator-facing query the preset represents;
   // href stays at plain `#/traces` until Phase 2 wires param routing.
-  const PRESETS: Entry[] = [
-    { kind: 'preset', label: 'Only 4xx + 5xx',  hint: 'status >= 400',          href: '#/traces' },
-    { kind: 'preset', label: 'Last 24 hours',   hint: 'since = -24h',           href: '#/traces' },
-    { kind: 'preset', label: 'Claude only',     hint: 'client_kind: claude-*',  href: '#/traces' },
-    { kind: 'preset', label: 'OpenAI only',     hint: 'client_kind: openai-*',  href: '#/traces' },
-  ];
+  const PRESETS: Entry[] = $derived([
+    { kind: 'preset', label: t('palette.preset4xx5xx'),   hint: t('palette.preset4xx5xxHint'),   href: '#/traces' },
+    { kind: 'preset', label: t('palette.presetLast24h'),  hint: t('palette.presetLast24hHint'),  href: '#/traces' },
+    { kind: 'preset', label: t('palette.presetClaude'),   hint: t('palette.presetClaudeHint'),   href: '#/traces' },
+    { kind: 'preset', label: t('palette.presetOpenAI'),   hint: t('palette.presetOpenAIHint'),   href: '#/traces' },
+  ]);
 
   // ---------- recent traces → entries ----------
 
@@ -171,7 +176,7 @@
       bind:value={query}
       type="text"
       class="search"
-      placeholder="search routes, filters, recent traces…"
+      placeholder={t('palette.placeholder')}
       autocomplete="off"
       spellcheck="false"
     />
@@ -179,7 +184,7 @@
     <div class="body">
       {#if routesFiltered.length > 0}
         <div class="section">
-          <div class="label">routes</div>
+          <div class="label">{t('palette.routes')}</div>
           {#each routesFiltered as e (e.label)}
             <button
               type="button"
@@ -197,7 +202,7 @@
 
       {#if presetsFiltered.length > 0}
         <div class="section">
-          <div class="label">filter presets</div>
+          <div class="label">{t('palette.filterPresets')}</div>
           {#each presetsFiltered as e (e.label)}
             <button
               type="button"
@@ -214,9 +219,9 @@
       {/if}
 
       <div class="section">
-        <div class="label">recent traces</div>
+        <div class="label">{t('palette.recentTraces')}</div>
         {#if recentFiltered.length === 0}
-          <div class="empty">no recent traces</div>
+          <div class="empty">{t('palette.noRecentTraces')}</div>
         {:else}
           {#each recentFiltered as e (e.href)}
             <button
@@ -235,9 +240,9 @@
     </div>
 
     <div class="help mono">
-      <span>↑↓ navigate</span>
-      <span>↵ select</span>
-      <span>esc close</span>
+      <span>{t('palette.helpNavigate')}</span>
+      <span>{t('palette.helpSelect')}</span>
+      <span>{t('palette.helpClose')}</span>
     </div>
   </div>
 {/if}

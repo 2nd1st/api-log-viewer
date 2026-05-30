@@ -30,6 +30,11 @@
   // renderers but is unused here.
 
   import type { MediaBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
+
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   type Props = {
     block: MediaBlock;
@@ -150,7 +155,7 @@
 
 <div class="block">
   <div class="head">
-    <span class="role">{block.role}</span>
+    <span class="role">{roleLabel(block.role)}</span>
     <span class="title">
       <span class="glyph" aria-hidden="true">{isImage ? '▸' : '─'}</span>
       <span class="kind">{block.media_type}</span>
@@ -169,7 +174,7 @@
         class="thumb-btn"
         class:expanded
         onclick={toggleExpand}
-        aria-label={expanded ? 'Collapse image' : 'Expand image'}
+        aria-label={expanded ? t('blocks.collapseImage') : t('blocks.expandImage')}
       >
         <img
           src={src}
@@ -199,7 +204,7 @@
         </div>
         {#if hasInline}
           <button type="button" class="dl mono" onclick={downloadInline}>
-            download
+            {t('blocks.download')}
           </button>
         {:else if hasUrl}
           <a
@@ -209,10 +214,10 @@
             rel="noopener noreferrer"
             target="_blank"
           >
-            download
+            {t('blocks.download')}
           </a>
         {:else}
-          <span class="dl mono dl--disabled">unavailable</span>
+          <span class="dl mono dl--disabled">{t('blocks.unavailable')}</span>
         {/if}
       </div>
     {/if}

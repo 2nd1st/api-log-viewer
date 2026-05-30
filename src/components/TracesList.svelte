@@ -90,6 +90,7 @@
   //     parent's FilterSidebar reads them reactively for <datalist>.
 
   import { shortId, shortTs, statusClass } from '../lib/format';
+  import { t } from '../lib/i18n.svelte';
 
   interface Props {
     filters: TracesFilters;
@@ -207,10 +208,10 @@
       if (modelsChanged) knownModels = new Set(knownModels);
       if (keysChanged) knownKeys = new Set(knownKeys);
 
-      onStatus(`${traces.length} loaded`, 'good');
+      onStatus(t('traces.statusLoaded', { n: traces.length }), 'good');
       emitPagerState();
     } catch (_e) {
-      onStatus('list failed', 'bad');
+      onStatus(t('traces.statusListFailed'), 'bad');
     }
   }
 
@@ -218,7 +219,9 @@
     onPagerChange?.({
       prevDisabled: cursorStack.length === 0,
       nextDisabled: !cursor,
-      info: traces.length ? `${traces.length} rows` : 'empty',
+      info: traces.length
+        ? t('traces.pagerRows', { n: traces.length })
+        : t('ui.empty'),
     });
   }
 
@@ -340,14 +343,21 @@
 
 <div class="toolbar">
   <label class="ar">
-    <span class="ar-label">auto-refresh</span>
+    <span class="ar-label">{t('filters.autoRefresh')}</span>
     <select value={refreshOpt} onchange={onRefreshChange}>
       {#each REFRESH_OPTIONS as opt (opt)}
         <option value={opt}>{opt}</option>
       {/each}
     </select>
-    <span class="ar-state" title={refreshOpt === 'off' ? 'auto-refresh off' : `refreshing every ${REFRESH_SECONDS[refreshOpt]}s`}>
-      {refreshOpt === 'off' ? '○ off' : `↻ ${refreshOpt}`}
+    <span
+      class="ar-state"
+      title={refreshOpt === 'off'
+        ? t('filters.autoRefreshTitleOff')
+        : t('filters.autoRefreshTitleOn', { sec: REFRESH_SECONDS[refreshOpt] })}
+    >
+      {refreshOpt === 'off'
+        ? t('filters.autoRefreshOff')
+        : t('filters.autoRefreshOn', { opt: refreshOpt })}
     </span>
   </label>
 </div>
@@ -355,28 +365,28 @@
 <table bind:this={tableEl} onwheel={onScroll} ontouchmove={onScroll}>
   <thead>
     <tr>
-      <th>time</th>
-      <th>status</th>
-      <th>path</th>
-      <th>model</th>
-      <th>key</th>
-      <th>session</th>
+      <th>{t('traces.colTime')}</th>
+      <th class="num">{t('traces.colStatus')}</th>
+      <th>{t('traces.colPath')}</th>
+      <th>{t('traces.colModel')}</th>
+      <th>{t('traces.colKey')}</th>
+      <th>{t('traces.colSession')}</th>
     </tr>
   </thead>
   <tbody>
-    {#each traces as t (t.id)}
+    {#each traces as row (row.id)}
       <tr
-        data-id={t.id}
-        class:selected={t.id === selectedId}
-        onclick={() => onSelectTrace(t.id)}
+        data-id={row.id}
+        class:selected={row.id === selectedId}
+        onclick={() => onSelectTrace(row.id)}
       >
-        <td class="t">{shortTs(t.ts_start)}</td>
-        <td class="s {statusClass(t.status)}">{t.status ?? '—'}</td>
-        <td>{t.path ?? ''}</td>
-        <td class="m">{t.model ?? '—'}</td>
-        <td class="k" title={t.key_hash ?? ''}>{(t.key_hash ?? '').slice(0, 8)}</td>
-        <td class="sess" title={t.session_root_id ?? ''}
-          >{shortId(t.session_root_id)}</td
+        <td class="t">{shortTs(row.ts_start)}</td>
+        <td class="s num {statusClass(row.status)}">{row.status ?? '—'}</td>
+        <td>{row.path ?? ''}</td>
+        <td class="m">{row.model ?? '—'}</td>
+        <td class="k" title={row.key_hash ?? ''}>{(row.key_hash ?? '').slice(0, 8)}</td>
+        <td class="sess" title={row.session_root_id ?? ''}
+          >{shortId(row.session_root_id)}</td
         >
       </tr>
     {/each}
@@ -427,6 +437,15 @@
   td.m { width: 88px; color: var(--fg-dim); }
   td.k { width: 70px; color: var(--fg-muted); }
   td.sess { width: 80px; color: var(--fg-muted); }
+
+  /* Numeric column right-align — Vercel-aesthetic delta (operator
+     2026-05-30: "都是左对齐很怪"). Header and cell both align right
+     and use tabular-nums so digits stay vertically lined up. */
+  th.num,
+  td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 
   tbody tr { cursor: pointer; }
   tbody tr:hover {

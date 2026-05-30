@@ -27,6 +27,14 @@
   // actually uses it). We accept it and ignore it.
 
   import type { ErrorBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
+
+  // ErrorBlock.role is always 'system' per the type, but we route through
+  // the same 'blocks.<role>' namespace as the other Block renderers so
+  // i18n stays uniform.
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   type Props = {
     block: ErrorBlock;
@@ -59,10 +67,10 @@
 
 <div class="block block--error" role="group" aria-label="error block">
   <div class="head">
-    <span class="role">{block.role}</span>
+    <span class="role">{roleLabel(block.role)}</span>
     <span class="title">
       <span class="glyph" aria-hidden="true">⚠</span>
-      <span class="kind">error</span>
+      <span class="kind">{t('blocks.error')}</span>
     </span>
     <span class="meta">
       {#each metaParts as part, i (i)}
@@ -76,7 +84,7 @@
     <pre class="message">{block.error_message}</pre>
     {#if block.error_code}
       <div class="code-line">
-        <span class="code-label">code</span>
+        <span class="code-label">{t('blocks.errorCodeLabel')}</span>
         <code class="code-val">{block.error_code}</code>
       </div>
     {/if}

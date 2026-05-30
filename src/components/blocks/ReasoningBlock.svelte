@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ReasoningBlock } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
 
   interface Props {
     block: ReasoningBlock;
@@ -49,12 +50,12 @@
     onclick={toggle}
     disabled={!hasBody}
     aria-expanded={hasBody ? expanded : undefined}
-    aria-label={hasBody ? (expanded ? 'Collapse reasoning' : 'Expand reasoning') : 'reasoning (no body delivered)'}
+    aria-label={hasBody ? (expanded ? t('blocks.collapseReasoning') : t('blocks.expandReasoning')) : t('blocks.reasoningEmpty')}
   >
     <span class="marker" aria-hidden="true">
       {hasBody ? (expanded ? '▾' : '▸') : '·'}
     </span>
-    <span class="role">assistant · reasoning</span>
+    <span class="role">{t('blocks.reasoningHeader')}</span>
 
     {#if hasBody && !expanded && block.summary}
       <span class="summary">{block.summary}</span>

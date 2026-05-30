@@ -2,6 +2,15 @@
   import type { TextBlock } from '../../lib/blocks';
   import { renderMarkdown, looksLikeMarkdown } from '../../lib/markdown';
   import { hasXmlSections, parseXmlSections } from '../../lib/xmlPrompt';
+  import { t } from '../../lib/i18n.svelte';
+
+  // Localized role label. The block.role enum is 'user' | 'assistant' |
+  // 'system' | 'developer' here; we look up the matching 'blocks.<role>'
+  // dictionary key. If the role doesn't have a key, t() falls back to
+  // the raw string, preserving the original semantics.
+  function roleLabel(role: string): string {
+    return t('blocks.' + role);
+  }
 
   interface Props {
     block: TextBlock;
@@ -68,7 +77,7 @@
 
 <div class="block role-{block.role}">
   <header class="head">
-    <span class="role">{block.role}</span>
+    <span class="role">{roleLabel(block.role)}</span>
     <span class="meta">
       {#if block.token_estimate !== undefined}
         <span class="meta-item">{block.token_estimate}t</span>
@@ -93,7 +102,7 @@
             >
               <span class="xml-marker">{open ? '▾' : '▸'}</span>
               <span class="xml-tag">{section.tag}</span>
-              <span class="xml-size">{lc} {lc === 1 ? 'line' : 'lines'}</span>
+              <span class="xml-size">{lc === 1 ? t('blocks.lineCountOne', { n: lc }) : t('blocks.lineCountMany', { n: lc })}</span>
             </button>
             {#if open}
               <div class="xml-body md">{@html renderMarkdown(section.body)}</div>
@@ -114,7 +123,7 @@
       class="toggle"
       onclick={() => (collapsed = !collapsed)}
     >
-      {collapsed ? `show ${hiddenLineCount} more lines` : 'collapse'}
+      {collapsed ? t('blocks.showMoreLines', { n: hiddenLineCount }) : t('blocks.collapse')}
     </button>
   {/if}
 </div>

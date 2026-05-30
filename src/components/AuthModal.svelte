@@ -33,6 +33,7 @@
   // can pop it from a 401 (via registerAuthModalHandler).
 
   import { getToken, setToken } from '../lib/api';
+  import { t } from '../lib/i18n.svelte';
 
   interface Props {
     open: boolean;
@@ -82,23 +83,19 @@
 
 <div class="modal-bg" class:show={open} role="presentation">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-    <h2 id="auth-modal-title">admin token</h2>
-    <p>
-      Bearer from <code>$APILOG_DATA_DIR/admin_token</code>. Stored in
-      <code>localStorage</code> on this device only; sent on every
-      <code>/api/*</code> and <code>/healthz</code> request from this tab.
-    </p>
+    <h2 id="auth-modal-title">{t('auth.title')}</h2>
+    <p>{t('auth.body')}</p>
     <input
       bind:this={inputEl}
       bind:value={tokenValue}
       type="password"
-      placeholder="64 hex chars…"
+      placeholder={t('auth.placeholder')}
       autocomplete="off"
       onkeydown={onKeydown}
     />
     <div class="btn-row">
-      <button type="button" class="secondary" onclick={cancel}>Cancel</button>
-      <button type="button" class="primary" onclick={save}>Save</button>
+      <button type="button" class="secondary" onclick={cancel}>{t('auth.cancel')}</button>
+      <button type="button" class="primary" onclick={save}>{t('auth.save')}</button>
     </div>
   </div>
 </div>
@@ -143,13 +140,6 @@
     font-size: var(--size-meta);
     margin: 0 0 var(--space-3);
     line-height: 1.55;
-  }
-  .modal p code {
-    background: var(--bg);
-    padding: 1px 4px;
-    border-radius: var(--radius-sm);
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
   }
   .modal input {
     width: 100%;
