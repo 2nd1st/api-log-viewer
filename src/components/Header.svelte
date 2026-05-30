@@ -2,11 +2,14 @@
   // Header / nav strip.
   //
   // The brand text "api-log/viewer" stays. Nav tabs are now:
-  //   - Landing  (#/landing)  — default home view
+  //   - Home     (#/landing)  — default home view; nav label reads "Home",
+  //                             the route stays "/landing" for stable
+  //                             bookmark surface. Component still named
+  //                             Landing.svelte (internal naming).
   //   - Traces   (#/traces)   — list + detail surface
   //
   // The legacy Healthz tab is gone; the operator data is absorbed into
-  // the Landing's "internal" section (see Landing.svelte). The legacy
+  // the Home view's "internal" section (see Landing.svelte). The legacy
   // #/dashboard route still resolves (App.svelte rewrites it to
   // #/landing on entry) so old bookmarks keep working.
   //
@@ -46,7 +49,7 @@
       data-view="landing"
       href="#/landing"
       class:active={view === 'landing'}
-    >Landing</a>
+    >Home</a>
     <a
       data-view="traces"
       href="#/traces"
