@@ -1,101 +1,128 @@
 <script lang="ts">
+  // MediaBlock renderer.
+  //
+  // Backend PHILOSOPHY §1 (render what's there, no synthesis):
+  //   - We render the NAMED inline fields the adapter populated:
+  //     `block.url` (remote URL or backend-served extracted path) or
+  //     `block.data_b64` (inline base64 from the protocol).
+  //   - `body_b64` is NOT an attachment — it's the unparseable-fallback
+  //     container — and is NOT routed into MediaBlock by the adapter.
+  //
+  // Backend §2: capture is non-blocking. The viewer reads what the
+  //   extractor (and adapter) recorded; this renderer is a read-only
+  //   view over those fields.
+  //
+  // Backend §6: filesystem is truth. When `block.url` points at the
+  //   extracted file served by /api/media/..., the browser fetches the
+  //   real bytes. When only `data_b64` is present we synthesize a
+  //   data: URL — no JS decode of the b64 in the render path.
+  //
+  // Viewer PHILOSOPHY §5 (restraint):
+  //   - No background fills on the block. Hairline border-bottom only.
+  //   - Role label upper-left, small-caps, --fg-dim.
+  //   - Right-aligned metadata strip: side · container · size · mime,
+  //     11px mono, --fg-dim.
+  //   - No emojis. Static rows use the `─` glyph; expand control on
+  //     the image uses `▸`. Both come from the existing ASCII glyph
+  //     family already used by the other Block renderers.
+  //
+  // onJumpToPair is accepted for symmetry with the other Block
+  // renderers but is unused here.
+
   import type { MediaBlock } from '../../lib/blocks';
 
-  // ─── Props ─────────────────────────────────────────────────────────────
-  let {
-    block,
-  }: {
+  type Props = {
     block: MediaBlock;
-    // onJumpToPair is only used by ToolCallBlock + ToolResultBlock; ignored here.
     onJumpToPair?: (id: string) => void;
-  } = $props();
+  };
 
-  // ─── Derived metadata ──────────────────────────────────────────────────
-  const isImage = $derived(block.mime_type?.startsWith('image/') ?? false);
-  const hasInlineData = $derived(!!block.data_b64);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let { block, onJumpToPair: _onJumpToPair }: Props = $props();
+
+  // ─── Type discrimination ───────────────────────────────────────────
+  // Prefer mime_type because it's the protocol-derived truth; fall
+  // back to media_type when mime is empty/missing.
+  const mime = $derived((block.mime_type || '').toLowerCase());
+  const isImage = $derived(mime.startsWith('image/') || block.media_type === 'image');
+  const isAudio = $derived(mime.startsWith('audio/') || block.media_type === 'audio');
+  const isVideo = $derived(mime.startsWith('video/') || block.media_type === 'video');
+  // Documents and anything that isn't image/audio/video render as the
+  // download chip.
+  const isFile = $derived(!isImage && !isAudio && !isVideo);
+
+  const hasInline = $derived(!!block.data_b64);
   const hasUrl = $derived(!!block.url);
 
-  // Display filename: explicit > mime-derived > fallback.
+  // ─── Source URL (data: or remote/backend-served) ───────────────────
+  // Synthesized only when we have something to point at. We hand the
+  // base64 to the browser as a data: URL — no atob in render.
+  const src = $derived.by<string | null>(() => {
+    if (hasInline) {
+      return `data:${block.mime_type || 'application/octet-stream'};base64,${block.data_b64}`;
+    }
+    if (hasUrl) return block.url!;
+    return null;
+  });
+
+  // ─── Display filename ─────────────────────────────────────────────
   const displayName = $derived(
-    block.filename ??
-      (block.mime_type ? `inline.${mimeToExt(block.mime_type)}` : 'inline.bin'),
+    block.filename || `media.${mimeToExt(block.mime_type || '')}`,
   );
 
-  // Approximate decoded byte size from base64 length (b64 inflates ~4/3).
-  // Cheap, no decode; used as label only.
+  // ─── Approximate size ─────────────────────────────────────────────
+  // Base64 decodes to ~3/4 its length. Cheap, no decode. Used as a
+  // human label only — never a precise value.
   const approxBytes = $derived(
     block.data_b64 ? Math.floor((block.data_b64.length * 3) / 4) : 0,
   );
   const sizeLabel = $derived(approxBytes ? formatBytes(approxBytes) : '');
 
-  // ─── Lazy state ────────────────────────────────────────────────────────
-  // We never decode b64 in the render path. Only on user click.
-  // imgSrc becomes a data: URL (or remote URL) the moment the user opts in.
-  let imgSrc = $state<string | null>(null);
-  let imgLoadError = $state<string | null>(null);
+  // ─── Metadata strip parts (right-aligned) ─────────────────────────
+  const metaParts = $derived(
+    [
+      block.source.side,
+      block.source.container,
+      sizeLabel,
+      block.mime_type || '',
+    ].filter((s) => s.length > 0),
+  );
+
+  // ─── Inline image expand state ────────────────────────────────────
   let expanded = $state(false);
-
-  // Image thumb: prefer remote URL (cheap); otherwise wait for user opt-in
-  // and synthesize a data: URI from the b64 string. Either way, no parsing
-  // of the b64 itself — we just hand it to the browser as a Data URL.
-  function loadImage(): void {
-    if (imgSrc) return;
-    if (hasUrl) {
-      imgSrc = block.url!;
-      return;
-    }
-    if (hasInlineData) {
-      try {
-        imgSrc = `data:${block.mime_type};base64,${block.data_b64}`;
-      } catch (e) {
-        imgLoadError = e instanceof Error ? e.message : String(e);
-      }
-    }
-  }
-
-  // For images we eagerly hand the data: URL to <img> so the browser can
-  // decode on its own thread. We still skip the b64 string in the DOM text.
-  $effect(() => {
-    if (isImage) loadImage();
-  });
-
   function toggleExpand(): void {
     expanded = !expanded;
   }
 
-  // ─── Download path (non-image, or image fallback) ─────────────────────
-  // Decode b64 only on click. atob is sync but fast enough for normal
-  // payloads; for >5MB we still tolerate it because the user explicitly
-  // opted in. The huge-string elision rule was about *pretty-printing in
-  // JSON*, not about download itself.
-  function download(): void {
-    if (!hasInlineData && hasUrl) {
-      // Server-hosted — just open the URL in a new tab.
-      window.open(block.url, '_blank', 'noopener,noreferrer');
-      return;
-    }
+  // ─── File download ────────────────────────────────────────────────
+  // Decode b64 → Blob → object URL only on click. Revoke after 1s so
+  // the browser has time to start the download. When only `url` is
+  // present we let the anchor's native `download` attribute drive it.
+  let downloadError = $state<string | null>(null);
+
+  function downloadInline(): void {
     if (!block.data_b64) return;
     try {
       const bin = atob(block.data_b64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: block.mime_type || 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
+      const blob = new Blob([bytes], {
+        type: block.mime_type || 'application/octet-stream',
+      });
+      const objUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = objUrl;
       a.download = displayName;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      // Release the blob URL on the next tick so the download has time to start.
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
     } catch (e) {
-      imgLoadError = e instanceof Error ? e.message : String(e);
+      downloadError = e instanceof Error ? e.message : String(e);
     }
   }
 
-  // ─── Helpers ───────────────────────────────────────────────────────────
-  function mimeToExt(mime: string): string {
+  // ─── Helpers ──────────────────────────────────────────────────────
+  function mimeToExt(m: string): string {
     const map: Record<string, string> = {
       'image/png': 'png',
       'image/jpeg': 'jpg',
@@ -106,11 +133,12 @@
       'audio/wav': 'wav',
       'audio/ogg': 'ogg',
       'video/mp4': 'mp4',
+      'video/webm': 'webm',
       'application/pdf': 'pdf',
       'application/json': 'json',
       'text/plain': 'txt',
     };
-    return map[mime] ?? (mime.split('/')[1] || 'bin');
+    return map[m.toLowerCase()] ?? (m.split('/')[1] || 'bin');
   }
 
   function formatBytes(n: number): string {
@@ -121,131 +149,140 @@
 </script>
 
 <div class="block">
-  <header class="row">
-    <div class="left">
-      <span class="glyph" aria-hidden="true">🖼</span>
-      <span class="role">{block.role}</span>
-    </div>
-    <div class="meta mono">
-      {#if block.token_estimate !== undefined}
-        <span>{block.token_estimate}t</span>
-      {/if}
-      <span>{block.source.side}</span>
-      <span>{block.source.container}</span>
-    </div>
-  </header>
+  <div class="head">
+    <span class="role">{block.role}</span>
+    <span class="title">
+      <span class="glyph" aria-hidden="true">{isImage ? '▸' : '─'}</span>
+      <span class="kind">{block.media_type}</span>
+    </span>
+    <span class="meta">
+      {#each metaParts as part, i (i)}
+        {#if i > 0}<span class="sep">·</span>{/if}<span>{part}</span>
+      {/each}
+    </span>
+  </div>
 
   <div class="body">
-    {#if isImage && imgSrc}
+    {#if isImage && src}
       <button
         type="button"
         class="thumb-btn"
+        class:expanded
         onclick={toggleExpand}
         aria-label={expanded ? 'Collapse image' : 'Expand image'}
       >
         <img
-          src={imgSrc}
+          src={src}
           alt={displayName}
           class="thumb"
           class:expanded
           loading="lazy"
           decoding="async"
-          onerror={() => {
-            imgLoadError = 'failed to decode image';
-          }}
         />
       </button>
-      {#if imgLoadError}
-        <div class="err mono">{imgLoadError}</div>
-      {/if}
-      <div class="caption mono">
-        <span class="name">{displayName}</span>
-        <span class="sep">·</span>
-        <span class="mime">{block.mime_type}</span>
-        {#if sizeLabel}
-          <span class="sep">·</span>
-          <span class="size">{sizeLabel}</span>
-        {/if}
-        <button type="button" class="link" onclick={download}>download</button>
-      </div>
-    {:else}
+    {:else if isAudio && src}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <audio controls preload="metadata" src={src} class="audio"></audio>
+    {:else if isVideo && src}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video controls preload="metadata" src={src} class="video"></video>
+    {:else if isFile || !src}
       <div class="file">
         <div class="file-info">
           <div class="file-name mono">{displayName}</div>
           <div class="file-meta mono">
             <span>{block.mime_type || 'application/octet-stream'}</span>
             {#if sizeLabel}
-              <span class="sep">·</span>
-              <span>{sizeLabel}</span>
+              <span class="sep">·</span><span>{sizeLabel}</span>
             {/if}
-            <span class="sep">·</span>
-            <span>{block.media_type}</span>
           </div>
         </div>
-        <button
-          type="button"
-          class="dl"
-          onclick={download}
-          disabled={!hasInlineData && !hasUrl}
-        >
-          download
-        </button>
+        {#if hasInline}
+          <button type="button" class="dl mono" onclick={downloadInline}>
+            download
+          </button>
+        {:else if hasUrl}
+          <a
+            class="dl mono"
+            href={block.url}
+            download={displayName}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            download
+          </a>
+        {:else}
+          <span class="dl mono dl--disabled">unavailable</span>
+        {/if}
       </div>
-      {#if imgLoadError}
-        <div class="err mono">{imgLoadError}</div>
-      {/if}
+    {/if}
+
+    {#if downloadError}
+      <div class="err mono">{downloadError}</div>
     {/if}
   </div>
 </div>
 
 <style>
+  /* Hairline-only block. No background fill, no role-edge accent —
+     media is rare enough that adding a second role-coded signal here
+     would compete with TextBlock's left edge. We rely entirely on
+     the head row's role label. */
   .block {
     display: flex;
     flex-direction: column;
     gap: var(--gap-2);
-    padding: var(--gap-2) 0;
+    padding: var(--gap-2) var(--gap-3);
     border-bottom: 1px solid var(--border);
   }
 
-  .row {
+  .head {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--gap-3);
-  }
-
-  .left {
-    display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--gap-2);
-  }
-
-  .glyph {
-    font-size: 12px;
-    color: var(--fg-muted);
+    font-family: var(--mono);
+    font-size: 11px;
     line-height: 1;
   }
 
   .role {
-    font-size: 10px;
-    letter-spacing: 0.08em;
     text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    color: var(--fg-dim);
+  }
+
+  .title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-1);
     color: var(--fg-muted);
   }
 
-  .meta {
-    font-size: 11px;
+  .glyph {
+    display: inline-block;
+    width: 10px;
     color: var(--fg-dim);
-    display: flex;
-    gap: var(--gap-2);
-    flex-shrink: 0;
   }
 
-  .meta span + span::before {
-    content: '·';
-    margin-right: var(--gap-2);
-    color: var(--fg-dim);
+  .kind {
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
   }
+
+  .meta {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
+    color: var(--fg-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .meta .sep { color: var(--fg-dim); }
 
   .body {
     display: flex;
@@ -253,20 +290,22 @@
     gap: var(--gap-2);
   }
 
-  /* ── Image variant ── */
+  /* ── Image ───────────────────────────────────────────────────────
+     Collapsed: 200×200 thumbnail, zoom-in cursor.
+     Expanded: natural size capped at 100% of container, zoom-out. */
   .thumb-btn {
+    align-self: flex-start;
     padding: 0;
     background: transparent;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: zoom-in;
-    align-self: flex-start;
     line-height: 0;
     overflow: hidden;
+    max-width: 100%;
   }
-  .thumb-btn:hover {
-    border-color: var(--border-strong);
-  }
+  .thumb-btn.expanded { cursor: zoom-out; }
+  .thumb-btn:hover { border-color: var(--border-strong); }
 
   .thumb {
     display: block;
@@ -275,43 +314,34 @@
     width: auto;
     height: auto;
     object-fit: contain;
-    background: var(--bg-elev);
   }
-
   .thumb.expanded {
-    max-width: min(720px, 100%);
-    max-height: 80vh;
+    max-width: 100%;
+    max-height: none;
   }
 
-  .thumb-btn:has(.expanded) {
-    cursor: zoom-out;
+  /* ── Audio / Video ──────────────────────────────────────────────── */
+  .audio {
+    display: block;
+    width: 100%;
+    max-width: 360px;
   }
 
-  .caption {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: var(--gap-2);
-    font-size: 11px;
-    color: var(--fg-dim);
+  .video {
+    display: block;
+    max-width: 100%;
+    max-height: 360px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
 
-  .caption .name {
-    color: var(--fg-muted);
-  }
-
-  .caption .sep {
-    color: var(--fg-dim);
-  }
-
-  /* ── Non-image variant ── */
+  /* ── File / Document / Other ────────────────────────────────────── */
   .file {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--gap-3);
     padding: var(--gap-2) var(--gap-3);
-    background: var(--bg-elev);
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
@@ -321,6 +351,7 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    flex: 1;
   }
 
   .file-name {
@@ -339,30 +370,39 @@
     flex-wrap: wrap;
   }
 
+  .file-meta .sep { color: var(--fg-dim); }
+
   .dl {
     flex-shrink: 0;
     font-size: 11px;
-    padding: 3px 10px;
+    line-height: 1;
+    padding: 4px 10px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    font-family: var(--mono);
+  }
+  .dl:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .dl--disabled {
+    color: var(--fg-dim);
+    cursor: default;
+  }
+  .dl--disabled:hover {
+    border-color: var(--border);
+    color: var(--fg-dim);
   }
 
-  /* ── Inline link button (image caption) ── */
-  .link {
-    background: transparent;
-    border: none;
-    padding: 0;
-    color: var(--accent);
-    font-family: var(--mono);
-    font-size: 11px;
-    cursor: pointer;
-    margin-left: auto;
-  }
-  .link:hover {
-    color: var(--accent-dim);
-    text-decoration: underline;
-  }
+  .mono { font-family: var(--mono); }
 
   .err {
     font-size: 11px;
     color: var(--err);
+    font-family: var(--mono);
   }
 </style>

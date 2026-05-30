@@ -230,15 +230,29 @@ function emitContentPart(
       sequence_number: nextSeq(),
       media_type: 'image',
       mime_type: guessMimeFromUrl(url) ?? 'image/*',
-      url: url ?? undefined,
     };
-    // dataURI in url -> store as data_b64 too for downstream display.
+    // dataURI in url -> extract base64 into data_b64; leave `url` undefined
+    // so the renderer prefers the inline bytes (matches the contract: when
+    // base64 is present we render from it directly, not via /api/media).
+    // NB: idx ordering convention — the per-trace idx that the backend
+    // extractor assigns matches the order this adapter emits MediaBlocks
+    // in, because both walk the same protocol fields in the same order.
+    // This is convention not contract; if the backend extractor ever
+    // diverges, the viewer will need to fall back to /api/media lookups
+    // keyed by source path instead of relying on idx.
     if (url && url.startsWith('data:')) {
       const m = url.match(/^data:([^;,]+)(?:;base64)?,(.*)$/);
       if (m) {
         media.mime_type = m[1] || media.mime_type;
         media.data_b64 = m[2];
+      } else {
+        // data: URL we couldn't parse — keep the URL so the operator sees it.
+        media.url = url;
       }
+    } else if (url) {
+      // Remote URL (http/https). Keep as url; the backend extractor skips
+      // remote URLs so there's no extracted file to point at either way.
+      media.url = url;
     }
     out.push(media);
     return;

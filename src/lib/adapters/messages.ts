@@ -843,9 +843,20 @@ function anthropicMediaToBlock(
     mime_type: mime,
     source,
   };
-  if (typeof src.data === 'string') block.data_b64 = src.data;
-  if (typeof src.url === 'string') block.url = src.url;
-  if (typeof src.file_id === 'string') block.url = `file:${src.file_id}`;
+  // Anthropic source.type discriminates which carrier is populated:
+  //   - 'base64' -> source.data is the b64 string
+  //   - 'url'    -> source.url is the remote URL
+  //   - 'file'   -> source.file_id is the provider-side file handle
+  // Prefer inline base64 so the renderer reads from data_b64 directly
+  // (per contract: idx ordering matches backend extractor — convention,
+  // not contract). Leave url undefined when data_b64 is set.
+  if (typeof src.data === 'string' && src.data.length > 0) {
+    block.data_b64 = src.data;
+  } else if (typeof src.url === 'string' && src.url.length > 0) {
+    block.url = src.url;
+  } else if (typeof src.file_id === 'string' && src.file_id.length > 0) {
+    block.url = `file:${src.file_id}`;
+  }
   if (typeof part.title === 'string') block.filename = part.title;
   return block;
 }

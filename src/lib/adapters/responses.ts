@@ -34,6 +34,7 @@ import type {
   Block,
   BlockSource,
   ErrorBlock,
+  MediaBlock,
   ReasoningBlock,
   TextBlock,
   ToolCallBlock,
@@ -294,15 +295,70 @@ function adaptInputMessage(item: Json, index: number): Block[] {
         text: typeof c.text === 'string' ? c.text : '',
       } satisfies TextBlock);
     } else if (cType === 'input_image' || cType === 'image_url') {
+      // input_image: per Phase K § 1.3 the URL form is URL-only (we never
+      // fetch remote https://...). The data: URL form is rare but legal —
+      // when present, extract the base64 inline. NB: idx ordering matches
+      // backend extractor walk order (convention, not contract — see
+      // chat.ts comment).
       const url = typeof c.image_url === 'string' ? c.image_url : c.image_url?.url;
-      out.push({
+      const media: MediaBlock = {
         type: 'media',
         role: role === 'developer' || role === 'system' ? 'user' : role,
         source: cSource,
         media_type: 'image',
         mime_type: 'image/*',
-        url: typeof url === 'string' ? url : undefined,
-      });
+      };
+      if (typeof url === 'string' && url.startsWith('data:')) {
+        const m = url.match(/^data:([^;,]+)(?:;base64)?,(.*)$/);
+        if (m) {
+          media.mime_type = m[1] || media.mime_type;
+          media.data_b64 = m[2];
+        } else {
+          media.url = url;
+        }
+      } else if (typeof url === 'string') {
+        media.url = url;
+      }
+      out.push(media);
+    } else if (cType === 'input_file') {
+      // input_file content block (Responses API): may carry inline base64
+      // via `file_data` (data: URL or raw b64), a remote `file_url`, or a
+      // server-side `file_id` reference. The backend extractor doesn't
+      // currently extract input_file (UNTESTED — no real samples at write
+      // time), so the idx convention only kicks in if/when it adds support;
+      // until then the inline b64 is rendered directly from data_b64.
+      const mediaRole: MediaBlock['role'] =
+        role === 'developer' || role === 'system' ? 'user' : role;
+      const filename = typeof c.filename === 'string' ? c.filename : undefined;
+      const media: MediaBlock = {
+        type: 'media',
+        role: mediaRole,
+        source: cSource,
+        media_type: 'document',
+        mime_type: 'application/octet-stream',
+      };
+      if (filename) media.filename = filename;
+      const fileData = typeof c.file_data === 'string' ? c.file_data : undefined;
+      const fileUrl = typeof c.file_url === 'string' ? c.file_url : undefined;
+      const fileId = typeof c.file_id === 'string' ? c.file_id : undefined;
+      if (fileData) {
+        if (fileData.startsWith('data:')) {
+          const m = fileData.match(/^data:([^;,]+)(?:;base64)?,(.*)$/);
+          if (m) {
+            media.mime_type = m[1] || media.mime_type;
+            media.data_b64 = m[2];
+          } else {
+            media.data_b64 = fileData;
+          }
+        } else {
+          media.data_b64 = fileData;
+        }
+      } else if (fileUrl) {
+        media.url = fileUrl;
+      } else if (fileId) {
+        media.url = `file:${fileId}`;
+      }
+      out.push(media);
     } else {
       out.push(makeUnknownBlock(cSource, c, `unknown message content type "${cType}"`));
     }
@@ -327,6 +383,11 @@ interface InProgress {
   // never arrives (truncated trace, connection drop).
   text?: string;
   args?: string;
+  // Sibling MediaBlock for image_generation_call items. The image bytes
+  // (b64) arrive on output_item.done, not .added, so we pre-create an
+  // empty MediaBlock at start time and fill it at finalize time.
+  // Mutated in place; already pushed to `out`.
+  media?: MediaBlock;
 }
 
 function adaptEvents(events: Array<{ event?: string; data?: Json }>): Block[] {
@@ -523,7 +584,34 @@ function startBlock(
       raw_input: seedRaw || undefined,
       call_id: callId,
     };
-    byItemId.set(itemId, { block, args: seedRaw });
+    const slot: InProgress = { block, args: seedRaw };
+
+    // image_generation_call: pre-create a sibling MediaBlock. The actual
+    // base64 `result` lands on output_item.done; we fill data_b64 there.
+    // UNTESTED — no real samples at write time; field shape (`result` as
+    // b64, `output_format` for mime) is taken from the OpenAI Responses
+    // spec. NB: idx ordering matches backend extractor walk order
+    // (convention not contract — see chat.ts comment).
+    if (itemType === 'image_generation_call') {
+      const seedResult = typeof item.result === 'string' ? item.result : undefined;
+      const seedFormat =
+        typeof item.output_format === 'string' ? item.output_format : undefined;
+      const media: MediaBlock = {
+        type: 'media',
+        role: 'assistant',
+        source,
+        media_type: 'image',
+        mime_type: seedFormat ? `image/${seedFormat}` : 'image/png',
+      };
+      if (seedResult) media.data_b64 = seedResult;
+      slot.media = media;
+      out.push(block);
+      out.push(media);
+      byItemId.set(itemId, slot);
+      return;
+    }
+
+    byItemId.set(itemId, slot);
     out.push(block);
     return;
   }
@@ -595,6 +683,18 @@ function finalizeItem(data: Json, byItemId: Map<string, InProgress>): void {
       ip.block.raw_input = snapshot;
       const parsed = tryParseJson(snapshot);
       ip.block.input = parsed !== undefined ? parsed : snapshot;
+    }
+    // image_generation_call: fill the sibling MediaBlock's data_b64 from
+    // item.result. Mime taken from item.output_format if present, else
+    // left as the default seeded at start time. The MediaBlock has been
+    // in `out` since startBlock; mutating in place is the same pattern
+    // used for streamed text/reasoning blocks above.
+    if (ip.media && item.type === 'image_generation_call') {
+      const finalResult = typeof item.result === 'string' ? item.result : '';
+      if (finalResult && !ip.media.data_b64) ip.media.data_b64 = finalResult;
+      const fmt =
+        typeof item.output_format === 'string' ? item.output_format : '';
+      if (fmt) ip.media.mime_type = `image/${fmt}`;
     }
     return;
   }

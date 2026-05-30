@@ -64,6 +64,79 @@
     }, 1000);
   }
 
+  // ---------- DISPLAY: save attachments (backend media extraction) ----------
+  //
+  // Backend GET /api/config/media → { save_attachments: bool, source: string }
+  // Backend PUT /api/config/media { save_attachments } persists to
+  // runtime_overrides.json and updates in-memory config so subsequent
+  // traces honor it immediately. Per Phase K § 5.3 the change is NOT
+  // retroactive — existing files on disk are left alone.
+  //
+  // This is the only DISPLAY-section control that talks to the backend
+  // (everything else is local localStorage). We render it here anyway
+  // because operationally the operator thinks of it as a viewer setting
+  // — the "do extracted files show up in the export bundle" knob.
+
+  type MediaCfgState =
+    | { kind: 'idle' }
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'ready'; value: boolean; source: string };
+
+  let mediaCfg = $state<MediaCfgState>({ kind: 'idle' });
+  let mediaHintVisible = $state<boolean>(false);
+  let mediaHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function loadMediaCfg() {
+    mediaCfg = { kind: 'loading' };
+    try {
+      const r = await authFetch('api/config/media');
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
+      mediaCfg = {
+        kind: 'ready',
+        value: j.save_attachments === true,
+        source: typeof j.source === 'string' ? j.source : 'default',
+      };
+    } catch (e: any) {
+      mediaCfg = { kind: 'error', message: e?.message ?? String(e) };
+    }
+  }
+
+  async function onMediaToggle(e: Event) {
+    const checked = (e.currentTarget as HTMLInputElement).checked;
+    // Optimistic UI: flip immediately, revert on failure.
+    const prev = mediaCfg;
+    mediaCfg =
+      mediaCfg.kind === 'ready'
+        ? { ...mediaCfg, value: checked }
+        : { kind: 'ready', value: checked, source: 'override' };
+    try {
+      const r = await authFetch('api/config/media', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ save_attachments: checked }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
+      mediaCfg = {
+        kind: 'ready',
+        value: j.save_attachments === true,
+        source: typeof j.source === 'string' ? j.source : 'override',
+      };
+      mediaHintVisible = true;
+      if (mediaHintTimer) clearTimeout(mediaHintTimer);
+      mediaHintTimer = setTimeout(() => {
+        mediaHintVisible = false;
+      }, 1000);
+    } catch (e: any) {
+      mediaCfg =
+        prev.kind === 'ready'
+          ? prev
+          : { kind: 'error', message: e?.message ?? String(e) };
+    }
+  }
+
   // ---------- DISPLAY: traces auto-refresh ----------
 
   type RefreshOpt = 'off' | '5s' | '10s' | '30s' | '60s' | '5m';
@@ -189,6 +262,11 @@
       }
     })();
 
+    // Load backend media config in parallel; failures surface inline on
+    // the row, not as a global error (a 404 here would mean the operator
+    // is on an older backend without Phase K endpoints — non-fatal).
+    void loadMediaCfg();
+
     const tick = setInterval(() => {
       now = Date.now();
     }, 1000);
@@ -269,6 +347,31 @@
           <span class="hint" class:show={pathHintVisible}>saved</span>
         </div>
         <div class="note">trailing <code>*</code> = prefix match. exact path = exact match. blank reverts to <code>/v1/*</code>.</div>
+      </dd>
+
+      <dt>save attachments</dt>
+      <dd>
+        <div class="row">
+          {#if mediaCfg.kind === 'loading' || mediaCfg.kind === 'idle'}
+            <span class="dim mono">loading…</span>
+          {:else if mediaCfg.kind === 'error'}
+            <label class="row">
+              <input type="checkbox" disabled />
+              <span class="dim">unavailable ({mediaCfg.message})</span>
+            </label>
+          {:else}
+            <label class="row">
+              <input
+                type="checkbox"
+                checked={mediaCfg.value}
+                onchange={onMediaToggle}
+              />
+              <span class="mono dim">source: {mediaCfg.source}</span>
+            </label>
+            <span class="hint" class:show={mediaHintVisible}>saved</span>
+          {/if}
+        </div>
+        <div class="note">writes extracted images/files to <code>data/&lt;date&gt;/&lt;keyhash&gt;/media/</code>. set in YAML or here; runtime value wins.</div>
       </dd>
 
       <dt>traces auto-refresh</dt>
