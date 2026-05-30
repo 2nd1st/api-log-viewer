@@ -165,11 +165,21 @@
     return n.toLocaleString();
   });
 
-  // Per-kind breakdown would need per-trace detail fetches (the list
-  // endpoint only exposes media_count as an int). R8 ships the total
-  // file count only; operator can click into a trace to see kinds.
-  const mediaCountForSubline = $derived.by(() => {
-    return healthz?.counters?.total_media_files ?? 0;
+  // MEDIA subline — Phase 2 A R8 polish: the always-rendered "{n} files"
+  // subline just restated the headline number, so it's gone. Replaced
+  // with an average derived from the 200-row sample's media_count int
+  // field: sum(media_count) / sample length, rounded to 1 decimal.
+  // Returns null when the sum is 0 (or the sample is empty) so the
+  // template omits the cell-sub line entirely rather than reserving
+  // layout space for an em-dash.
+  const mediaPerTraceAvg = $derived.by<number | null>(() => {
+    if (rows.length === 0) return null;
+    let total = 0;
+    for (const r of rows) {
+      total += Number((r as { media_count?: unknown }).media_count ?? 0) || 0;
+    }
+    if (total === 0) return null;
+    return total / rows.length;
   });
 
   // Newest ts_start in the sample → relative-age label. Falls back to
@@ -323,6 +333,7 @@
 </script>
 
 <div class="landing">
+  <div class="page-container">
   {#if rowsLoadError}
     <div class="err-banner">{t('home.listFetchFailed', { message: rowsLoadError })}</div>
   {/if}
@@ -348,11 +359,11 @@
       <div class="status-cell">
         <div class="m-label">{t('home.media')}</div>
         <div class="m-value m-value-lg">{mediaTotalLabel}</div>
-        <div class="cell-sub">
-          {mediaCountForSubline > 0
-            ? t('home.mediaFiles', { n: mediaCountForSubline.toLocaleString() })
-            : '—'}
-        </div>
+        {#if mediaPerTraceAvg !== null}
+          <div class="cell-sub">
+            {t('home.mediaPerTrace', { n: mediaPerTraceAvg.toFixed(1) })}
+          </div>
+        {/if}
       </div>
       <div class="status-cell">
         <div class="m-label">{t('home.lastWrite')}</div>
@@ -475,26 +486,30 @@
       </div>
     </div>
   </section>
+  </div>
 </div>
 
 <style>
   /* ---------- outer layout ---------- *
    *
-   * Wider whitespace between sections per Phase 2 A. var(--space-section)
-   * (32px) is the base gap; the TOKEN USAGE → VOLUME boundary widens to
-   * var(--space-section-wide) (48px) because the two sections read as
-   * different concepts (sums vs. throughput timeline). The wider gap is
-   * applied via `.block-wide-gap + section` so the rule survives even if
-   * sections are reordered.
+   * Phase 2 A R9 wraps the section stack in a Vercel-style centered
+   * .page-container (1180px max-width, clamp-padded horizontally —
+   * see app.css). The outer .landing is now just the scroll/viewport
+   * shell; all section rhythm lives on .page-container as a flex
+   * column with var(--space-section) gap. The TOKEN USAGE → VOLUME
+   * boundary widens to var(--space-section-wide) (48px) via the
+   * `.block-wide-gap + .block` rule so reordering sections doesn't
+   * break the wider gap.
    */
   .landing {
     flex: 1;
     overflow: auto;
-    padding: var(--space-6) var(--space-6) var(--space-8);
+    min-height: 0;
+  }
+  .landing .page-container {
     display: flex;
     flex-direction: column;
     gap: var(--space-section);
-    min-height: 0;
   }
   .block-wide-gap + .block {
     margin-top: calc(var(--space-section-wide) - var(--space-section));

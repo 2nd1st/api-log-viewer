@@ -270,6 +270,7 @@
 </script>
 
 <div class="settings">
+  <div class="page-container page-container--narrow">
   <!-- 1. DISPLAY -->
   <section class="card">
     <header class="card-head">
@@ -278,11 +279,10 @@
     </header>
 
     <div class="rows">
-      <div class="row">
-        <div class="label-col">
-          <label for="settings-theme-toggle" class="label">{t('settings.theme')}</label>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <label for="settings-theme-toggle" class="settings-row-label">{t('settings.theme')}</label>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control">
           <button
             id="settings-theme-toggle"
             type="button"
@@ -298,11 +298,10 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="label-col">
-          <label for="settings-lang-toggle" class="label">{t('settings.language')}</label>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <label for="settings-lang-toggle" class="settings-row-label">{t('settings.language')}</label>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control">
           <button
             id="settings-lang-toggle"
             type="button"
@@ -328,12 +327,10 @@
     </header>
 
     <div class="rows">
-      <div class="row">
-        <div class="label-col">
-          <label for="settings-default-path" class="label">{t('settings.defaultPath')}</label>
-          <div class="helper">{t('settings.defaultPathNote')}</div>
-        </div>
-        <div class="control-col path-control">
+      <div class="settings-row">
+        <label for="settings-default-path" class="settings-row-label">{t('settings.defaultPath')}</label>
+        <div class="settings-row-helper">{t('settings.defaultPathNote')}</div>
+        <div class="settings-row-control path-control">
           <input
             id="settings-default-path"
             type="text"
@@ -354,12 +351,10 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="label-col">
-          <label for="settings-refresh" class="label">{t('settings.tracesAutoRefresh')}</label>
-          <div class="helper">{t('settings.tracesAutoRefreshNote')}</div>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <label for="settings-refresh" class="settings-row-label">{t('settings.tracesAutoRefresh')}</label>
+        <div class="settings-row-helper">{t('settings.tracesAutoRefreshNote')}</div>
+        <div class="settings-row-control">
           <select id="settings-refresh" value={refreshOpt} onchange={onRefreshChange}>
             {#each REFRESH_OPTIONS as opt (opt)}
               <option value={opt}>{opt}</option>
@@ -368,12 +363,10 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="label-col">
-          <label for="settings-media-toggle" class="label">{t('settings.saveAttachments')}</label>
-          <div class="helper">{t('settings.saveAttachmentsNote')}</div>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <label for="settings-media-toggle" class="settings-row-label">{t('settings.saveAttachments')}</label>
+        <div class="settings-row-helper">{t('settings.saveAttachmentsNote')}</div>
+        <div class="settings-row-control">
           {#if mediaCfg.kind === 'loading' || mediaCfg.kind === 'idle'}
             <span class="dim">{t('ui.loading')}</span>
           {:else if mediaCfg.kind === 'error'}
@@ -397,12 +390,10 @@
         </div>
       </div>
 
-      <div class="row last">
-        <div class="label-col">
-          <span class="label">{t('settings.reset')}</span>
-          <div class="helper">{t('settings.resetNote')}</div>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <span class="settings-row-label">{t('settings.reset')}</span>
+        <div class="settings-row-helper">{t('settings.resetNote')}</div>
+        <div class="settings-row-control">
           <button type="button" class="btn" onclick={resetDefaults}>{t('settings.resetButton')}</button>
         </div>
       </div>
@@ -417,11 +408,10 @@
     </header>
 
     <div class="rows">
-      <div class="row">
-        <div class="label-col">
-          <span class="label">{t('settings.adminToken')}</span>
-        </div>
-        <div class="control-col token-control">
+      <div class="settings-row">
+        <span class="settings-row-label">{t('settings.adminToken')}</span>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control token-control">
           <span class="mono token-mask">{maskedToken}</span>
           <button type="button" class="btn" onclick={openAuthModal}>{t('settings.changeTokenButton')}</button>
           {#if tokenSnapshot}
@@ -440,34 +430,32 @@
     </header>
 
     <div class="rows">
-      <div class="row">
-        <div class="label-col">
-          <span class="label">{t('settings.version')}</span>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <span class="settings-row-label">{t('settings.version')}</span>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control">
           <span class="mono">{VIEWER_VERSION}</span>
         </div>
       </div>
 
-      <div class="row">
-        <div class="label-col">
-          <span class="label">{t('settings.backend')}</span>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <span class="settings-row-label">{t('settings.backend')}</span>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control">
           <a class="mono link" href={HEALTHZ_URL} target="_blank" rel="noopener noreferrer">{HEALTHZ_URL}</a>
         </div>
       </div>
 
-      <div class="row last">
-        <div class="label-col">
-          <span class="label">{t('settings.aboutUpstreamLabel')}</span>
-        </div>
-        <div class="control-col">
+      <div class="settings-row">
+        <span class="settings-row-label">{t('settings.aboutUpstreamLabel')}</span>
+        <div class="settings-row-helper"></div>
+        <div class="settings-row-control">
           <a class="mono link" href={UPSTREAM_URL} target="_blank" rel="noopener noreferrer">{UPSTREAM_URL}</a>
         </div>
       </div>
     </div>
   </section>
+  </div>
 </div>
 
 <style>
@@ -480,10 +468,18 @@
      uses var(--fg) for high contrast, never --accent. */
 
   .settings {
+    padding: 0;
+  }
+
+  /* The flex column + gap rhythm lives on the page-container, not on
+     .settings, because .page-container--narrow is the actual parent
+     of the 4 cards. Without this rule, the cards would stack flush
+     and the 1px hairline borders of adjacent cards would visually
+     merge into a 2px line. */
+  .settings :global(.page-container) {
     display: flex;
     flex-direction: column;
     gap: var(--space-section);  /* 32px between major cards */
-    padding: 0;
   }
 
   /* ---------- card chrome ---------- */
@@ -517,48 +513,47 @@
     line-height: 1.5;
   }
 
-  /* ---------- rows ---------- */
+  /* ---------- rows ----------
+     3-column grid per Phase R9 page-layout spec:
+       col 1: label, capped at content width with 160px floor so short
+              labels still line up across rows
+       col 2: optional helper text (or empty spacer), takes the slack
+       col 3: control, right-justified
+     Eliminates the "label far-left, control far-right, 1500px of dead
+     space between" pathology the operator screenshotted. */
   .rows {
     display: flex;
     flex-direction: column;
   }
-  .row {
+  .settings-row {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
+    grid-template-columns: minmax(160px, max-content) 1fr auto;
+    gap: var(--space-3);
     align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
   }
-  .row.last,
-  .row:last-child {
+  .settings-row:last-child {
     border-bottom: 0;
   }
-
-  .label-col {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .label {
+  .settings-row-label {
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: var(--size-input);
     color: var(--fg);
     line-height: 1.4;
   }
-  .helper {
+  .settings-row-helper {
     font-family: var(--font-sans);
-    font-size: 12px;
+    font-size: var(--size-body);
     color: var(--fg-muted);
     line-height: 1.5;
+    min-width: 0;
   }
-
-  .control-col {
+  .settings-row-control {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    justify-content: flex-end;
+    justify-self: end;
     min-width: 0;
   }
   .path-control {
@@ -578,8 +573,8 @@
   }
 
   /* ---------- form controls ---------- */
-  .control-col input[type="text"],
-  .control-col select {
+  .settings-row-control input[type="text"],
+  .settings-row-control select {
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
@@ -592,8 +587,8 @@
     box-shadow: none;
     transition: border-color 150ms ease;
   }
-  .control-col input[type="text"]:focus,
-  .control-col select:focus {
+  .settings-row-control input[type="text"]:focus,
+  .settings-row-control select:focus {
     border-color: var(--accent);
   }
 

@@ -483,6 +483,7 @@
 </script>
 
 <div class="export">
+  <div class="page-container">
   <!-- HEADER -->
   <header class="head">
     <div class="title">{t('export.title')}</div>
@@ -490,7 +491,7 @@
   </header>
 
   <!-- TWO-COLUMN: Filters | Generate -->
-  <div class="grid">
+  <div class="export-cards">
     <!-- FILTERS CARD -->
     <section class="card filters-card">
       <h3 class="card-title">{tt('export.cardFilters')}</h3>
@@ -664,7 +665,7 @@
   </div>
 
   <!-- RECENT EXPORTS -->
-  <section class="card recent-card">
+  <section class="card recent-card export-recent">
     <h3 class="card-title">{t('export.recentExports')}</h3>
 
     {#if recent.length === 0}
@@ -702,6 +703,7 @@
       {/if}
     {/if}
   </section>
+  </div>
 </div>
 
 <style>
@@ -710,15 +712,22 @@
      primary button, right-aligned numbers. Accent reserved for focus
      ring + active state — page reads monochrome. */
 
+  /* .export is the outer scroll/flex shell; .page-container (global
+     utility from app.css) lives inside it and supplies the centered
+     max-width + horizontal padding. The inner vertical rhythm
+     (header → cards grid → recent) is restored here via a flex column
+     scoped to .page-container under this surface. */
   .export {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6);
     overflow: auto;
     flex: 1;
     min-height: 0;
-    max-width: 980px;
+  }
+  .export :global(.page-container) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
   }
 
   /* ---------- header ---------- */
@@ -746,18 +755,26 @@
 
   /* ---------- grid: Filters | Generate ---------- */
 
-  .grid {
+  .export-cards {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-4);
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
   }
 
   /* On narrow viewports stack the two cards. The recent card
      always spans the row by virtue of being a sibling section. */
   @media (max-width: 720px) {
-    .grid {
+    .export-cards {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* Recent Exports sits below the two-card grid as a sibling section.
+     It auto-fills the page-container's horizontal extent; the explicit
+     margin keeps the rhythm between cards-row and recent-row aligned
+     with the inside-card padding. */
+  .export-recent {
+    margin-top: var(--space-6);
   }
 
   /* ---------- cards (real ones this time) ---------- */
