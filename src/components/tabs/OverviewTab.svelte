@@ -30,7 +30,11 @@
   import { countByType } from '../../lib/blocks';
   import type { Block } from '../../lib/blocks';
   import { classifyClient } from '../../lib/client';
-  import { classifyPromptSource } from '../../lib/promptSource';
+  import {
+    classifyPromptSource,
+    extractProjectContext,
+    extractSkills,
+  } from '../../lib/promptSource';
   import { translateStopReason } from '../../lib/stopReason';
   import type { StopTone } from '../../lib/stopReason';
   import { shortId, humanBytes } from '../../lib/format';
@@ -130,6 +134,20 @@
   });
 
   const promptSource = $derived(classifyPromptSource(systemText));
+
+  // L2 identifiers — project this trace belongs to + the named skills
+  // / subagents the harness declared. Both reuse the same systemText
+  // pipeline above (no new extraction path); they return null / [] on
+  // anything that doesn't fit, so the rows are hidden silently when
+  // there's nothing to surface (restraint — no em-dash placeholder).
+  const projectContext = $derived(extractProjectContext(systemText));
+  const skills = $derived(extractSkills(systemText));
+
+  function projectSourceLabel(s: 'agents-md' | 'claude-md' | 'first-heading'): string {
+    if (s === 'agents-md') return t('overview.projectSourceAgents');
+    if (s === 'claude-md') return t('overview.projectSourceClaude');
+    return t('overview.projectSourceHeading');
+  }
 
   function truncSignals(signals: string[], max = 4): string {
     if (signals.length === 0) return '';
@@ -371,6 +389,13 @@
           {/if}
         {/if}
       </dd>
+      {#if projectContext}
+        <dt>{t('overview.projectContext')}</dt>
+        <dd>
+          <strong>{projectContext.name}</strong>
+          <span class="chip">{projectSourceLabel(projectContext.source)}</span>
+        </dd>
+      {/if}
     </dl>
   </section>
 
@@ -397,6 +422,14 @@
           </ul>
         {/if}
       </dd>
+      {#if skills.length > 0}
+        <dt>{t('overview.skillsDeclared')}</dt>
+        <dd>
+          {#each skills as name (name)}
+            <span class="chip">{name}</span>
+          {/each}
+        </dd>
+      {/if}
       <dt>{t('overview.responseShape')}</dt>
       <dd>{respShape || t('ui.dash')}</dd>
       <dt>{t('overview.truncation')}</dt>
