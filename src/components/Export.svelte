@@ -11,32 +11,13 @@
   //   - The form is a compact inline echo of FilterSidebar — same field
   //     names, same hints, same Apply-style button shape. We don't want
   //     the operator to learn a second filter vocabulary.
-  //   - Live preview is observational, not aspirational: we hit
-  //     /api/traces?...&limit=1 with the same filters just to confirm
-  //     "yes, your filter matches N traces, here is the earliest /
-  //     latest timestamp". Cheap. Debounced 400ms so typing doesn't
-  //     flood the API.
-  //   - Generate is a single window.location.href = api('api/export?...'),
-  //     letting the browser handle the download. The server emits a
-  //     Content-Disposition attachment header per the contract.
+  //   - Generate is authFetch -> Blob -> synthesized <a download> click,
+  //     because a navigation can't carry the Authorization header.
   //
   // INVENTED prop signature:
-  //   - authFetch: same fn the rest of the app uses, threaded so we can
-  //     run the preview query under the same Bearer token plumbing. The
-  //     download itself can't use authFetch (a navigation can't carry a
-  //     custom header), so we currently rely on the operator already
-  //     being authenticated via the existing token mechanism.
-  //
-  //     KNOWN LIMITATION: GET /api/export requires `Authorization: Bearer`.
-  //     A plain window.location.href = api('api/export?...') CANNOT attach
-  //     that header. Options for the Integrate phase:
-  //       1) server accepts a one-shot signed token query param,
-  //       2) viewer fetches the zip into a Blob and triggers a download
-  //          via a temporary <a href=blob:>,
-  //       3) server accepts the token via cookie set on /api/auth.
-  //     For now we use (2): authFetch the zip, blob it, download via a
-  //     synthesized <a download> click. This streams into memory but
-  //     keeps the auth model intact and avoids a server contract change.
+  //   - authFetch: same fn the rest of the app uses. Used both for the
+  //     one-shot /api/traces sample (to populate autocomplete datalists)
+  //     and for the actual /api/export blob download.
 
   import { api } from '../lib/api';
 
@@ -52,6 +33,14 @@
   // Defaults are deliberately empty so the operator picks scope — the
   // export is a destructive-ish action (it writes a zip to disk and
   // hands data to an agent), so we don't pre-populate any filter.
+  //
+  // NB: f_limit is a string deliberately. An earlier pass used a
+  // type="number" input bound to string state; Svelte's two-way binding
+  // coerced the value to a `number` after the first generate() commit,
+  // and the subsequent .trim() call blew up with "a(...).trim is not a
+  // function". Keeping the input as type="text" + inputmode="numeric"
+  // sidesteps the coercion entirely and matches how the other filter
+  // fields work.
 
   let f_status = $state<string>('');
   let f_path = $state<string>('');
@@ -62,15 +51,57 @@
   let f_until = $state<string>('');
   let f_limit = $state<string>('1000');
 
+  // ---------- autocomplete sample ----------
+  //
+  // One-shot probe of /api/traces?limit=200 on mount. We collect the
+  // distinct path / model / key_hash (8-char prefix) values seen in the
+  // sample and surface them as <datalist> options. This is a snapshot,
+  // not live — typing in the filter inputs does NOT re-fetch. The point
+  // is to give the operator "did I mean /v1/messages?" hints, not a
+  // full search index.
+
+  let knownPaths = $state<string[]>([]);
+  let knownModels = $state<string[]>([]);
+  let knownKeys = $state<string[]>([]);
+  let sampleLoaded = false;
+
+  async function loadSample(): Promise<void> {
+    if (sampleLoaded) return;
+    sampleLoaded = true;
+    try {
+      const r = await authFetch('api/traces?limit=200');
+      if (!r.ok) return;
+      const j = await r.json();
+      const rows: Array<{ path?: string; model?: string; key_hash?: string }> =
+        j.traces || [];
+      const paths = new Set<string>();
+      const models = new Set<string>();
+      const keys = new Set<string>();
+      for (const t of rows) {
+        if (t.path) paths.add(t.path);
+        if (t.model) models.add(t.model);
+        if (t.key_hash) keys.add(t.key_hash.slice(0, 8));
+      }
+      knownPaths = [...paths].sort();
+      knownModels = [...models].sort();
+      knownKeys = [...keys].sort();
+    } catch {
+      /* sample is best-effort; silent failure is fine */
+    }
+  }
+
+  $effect(() => {
+    void loadSample();
+  });
+
   // ---------- query string construction ----------
   //
   // buildQS() returns a URLSearchParams with the current filter values,
-  // omitting empty fields. Used for both the preview probe and the
-  // download URL. We don't validate here — the server returns 400 with
-  // a structured error on bad input and the operator sees that as a
-  // failed preview / failed download.
+  // omitting empty fields. Used for both the download URL and the URL
+  // hint below the button. Validation is the server's job — bad input
+  // gets a 400 with a structured error, which we surface as genError.
 
-  function buildQS(extra: Record<string, string> = {}): URLSearchParams {
+  function buildQS(): URLSearchParams {
     const qs = new URLSearchParams();
     const s = f_status.trim();
     if (s) qs.set('status', s);
@@ -88,86 +119,8 @@
     if (un) qs.set('until', un);
     const lim = f_limit.trim();
     if (lim) qs.set('limit', lim);
-    for (const [k2, v2] of Object.entries(extra)) qs.set(k2, v2);
     return qs;
   }
-
-  // ---------- live preview ----------
-  //
-  // We poke /api/traces with the same filter set + limit=1 (cheapest
-  // call that returns count metadata). The response shape is the same
-  // as TracesList sees: { traces: TraceRow[], next_cursor }. We don't
-  // get a true count from a single-row query — what we can show is
-  // "matched at least N (the earliest row)" plus the row's ts_start.
-  //
-  // To approximate the count without hammering the DB we issue a
-  // second tiny request with limit=<the operator's limit>, count the
-  // rows in the response, and report min/max ts_start across them.
-  // This is bounded by the operator's own limit so it's safe to
-  // refresh on every keystroke (with debounce).
-  //
-  // NB: the real /api/export streams; we use /api/traces for the
-  // preview only because /api/export returns a zip stream, not JSON.
-
-  type PreviewState =
-    | { kind: 'idle' }
-    | { kind: 'loading' }
-    | { kind: 'error'; message: string }
-    | { kind: 'ready'; count: number; earliest: string | null; latest: string | null; capped: boolean };
-
-  let preview = $state<PreviewState>({ kind: 'idle' });
-
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function schedulePreview(): void {
-    if (debounceTimer != null) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(runPreview, 400);
-  }
-
-  async function runPreview(): Promise<void> {
-    preview = { kind: 'loading' };
-    try {
-      // Use the operator's own limit as our probe ceiling. This keeps
-      // the preview cost bounded to whatever they're about to export.
-      const lim = Math.max(1, Math.min(5000, parseInt(f_limit, 10) || 1000));
-      const qs = buildQS({ limit: String(lim) });
-      const r = await authFetch('api/traces?' + qs.toString());
-      if (!r.ok) throw new Error(String(r.status));
-      const j = await r.json();
-      const rows: Array<{ ts_start?: string }> = j.traces || [];
-      let earliest: string | null = null;
-      let latest: string | null = null;
-      for (const t of rows) {
-        const ts = t.ts_start;
-        if (!ts) continue;
-        if (!earliest || ts < earliest) earliest = ts;
-        if (!latest || ts > latest) latest = ts;
-      }
-      preview = {
-        kind: 'ready',
-        count: rows.length,
-        earliest,
-        latest,
-        capped: rows.length >= lim,
-      };
-    } catch (e: any) {
-      preview = { kind: 'error', message: e?.message ?? String(e) };
-    }
-  }
-
-  // Reactively re-probe whenever any filter changes.
-  $effect(() => {
-    // Touch every field so the effect re-runs on any change.
-    void f_status;
-    void f_path;
-    void f_model;
-    void f_keyhash;
-    void f_session;
-    void f_since;
-    void f_until;
-    void f_limit;
-    schedulePreview();
-  });
 
   // ---------- generate ----------
   //
@@ -220,26 +173,9 @@
     }
   }
 
-  // ---------- format helpers ----------
-
-  function fmtTs(s: string | null): string {
-    if (!s) return '—';
-    // Cut the ms+Z tail for the preview blurb; full ts is in the data.
-    return s.replace(/\.\d+Z$/, 'Z');
-  }
-
-  // Disable Generate while preview is loading OR generating, AND when
-  // the preview reports zero matches (no point exporting an empty zip,
-  // even though the server will happily emit one).
-  const generateDisabled = $derived(
-    generating ||
-      preview.kind === 'loading' ||
-      (preview.kind === 'ready' && preview.count === 0),
-  );
-
-  // The URL we'd hit if Generate were a navigation. Surfaced for
-  // copy/paste debugging — not used by the actual button.
-  const debugUrl = $derived(api('api/export?' + buildQS().toString()));
+  // The URL Generate will actually request. Surfaced as a hint below
+  // the button — pure transparency, not a preview semantic.
+  const requestUrl = $derived(api('api/export?' + buildQS().toString()));
 </script>
 
 <div class="export">
@@ -275,10 +211,16 @@
         <input
           class="input"
           id="x-path"
-          placeholder="(any)"
+          list="x-dl-paths"
+          placeholder="/v1/* (prefix)"
           autocomplete="off"
           bind:value={f_path}
         />
+        <datalist id="x-dl-paths">
+          {#each knownPaths as v (v)}
+            <option value={v}></option>
+          {/each}
+        </datalist>
       </div>
 
       <div class="row">
@@ -286,10 +228,16 @@
         <input
           class="input"
           id="x-model"
+          list="x-dl-models"
           placeholder="any"
           autocomplete="off"
           bind:value={f_model}
         />
+        <datalist id="x-dl-models">
+          {#each knownModels as v (v)}
+            <option value={v}></option>
+          {/each}
+        </datalist>
       </div>
 
       <div class="row">
@@ -297,10 +245,16 @@
         <input
           class="input"
           id="x-keyhash"
+          list="x-dl-keys"
           placeholder="prefix"
           autocomplete="off"
           bind:value={f_keyhash}
         />
+        <datalist id="x-dl-keys">
+          {#each knownKeys as v (v)}
+            <option value={v}></option>
+          {/each}
+        </datalist>
       </div>
 
       <div class="row">
@@ -337,41 +291,18 @@
       </div>
 
       <div class="row">
-        <label for="x-limit">limit <span class="hint">(max 5000)</span></label>
+        <label for="x-limit">limit <span class="hint">(no upper bound)</span></label>
         <input
           class="input"
           id="x-limit"
-          type="number"
-          min="1"
-          max="5000"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="off"
           bind:value={f_limit}
         />
       </div>
     </div>
-  </section>
-
-  <!-- LIVE PREVIEW -->
-  <section class="card">
-    <h3>preview</h3>
-    <dl class="kv">
-      <dt>matches</dt>
-      <dd class="mono">
-        {#if preview.kind === 'idle'}
-          <span class="dim">—</span>
-        {:else if preview.kind === 'loading'}
-          <span class="dim">probing…</span>
-        {:else if preview.kind === 'error'}
-          <span class="err">{preview.message}</span>
-        {:else}
-          <strong>{preview.count}</strong> trace{preview.count === 1 ? '' : 's'}
-          {#if preview.capped}<span class="dim"> (capped at limit)</span>{/if}
-        {/if}
-      </dd>
-      <dt>earliest</dt>
-      <dd class="mono">{preview.kind === 'ready' ? fmtTs(preview.earliest) : '—'}</dd>
-      <dt>latest</dt>
-      <dd class="mono">{preview.kind === 'ready' ? fmtTs(preview.latest) : '—'}</dd>
-    </dl>
   </section>
 
   <!-- GENERATE -->
@@ -382,7 +313,7 @@
         type="button"
         class="primary"
         onclick={generate}
-        disabled={generateDisabled}
+        disabled={generating}
       >
         {generating ? 'generating…' : 'Generate &amp; download'}
       </button>
@@ -390,22 +321,7 @@
         <div class="err foot">{genError}</div>
       {/if}
     </div>
-    <div class="dim foot debug" title={debugUrl}>{debugUrl}</div>
-  </section>
-
-  <!-- WHAT'S IN THE ZIP -->
-  <section class="card">
-    <h3>what's in the zip</h3>
-    <dl class="kv">
-      <dt class="mono">data/&lt;YYYY-MM-DD&gt;/&lt;keyhash&gt;.jsonl</dt>
-      <dd>recorded transactions, one JSON object per line, grouped by UTC day and API key hash. Files ending in <span class="mono">.partial.jsonl</span> contain only the matching subset of that day's traces.</dd>
-      <dt class="mono">agent/CLAUDE.md</dt>
-      <dd>instructions for an LLM agent who receives the zip — explains the data layout, the JSONL schema, and what kinds of questions the operator typically asks.</dd>
-      <dt class="mono">agent/jq-cheatsheet.md</dt>
-      <dd>one-liners for slicing the JSONL with <span class="mono">jq</span> — common patterns like filtering by status, counting tool calls, reconstructing sessions.</dd>
-      <dt class="mono">README.md</dt>
-      <dd>operator-facing explainer with a summary of what's in this specific export: trace count, date range, filters applied.</dd>
-    </dl>
+    <div class="dim foot debug" title={requestUrl}>{requestUrl}</div>
   </section>
 </div>
 
@@ -459,8 +375,9 @@
     background: var(--bg-elev);
   }
 
-  /* Form grid: label on the left, control on the right. Mirrors the
-     .kv proportions so the form lines up with the preview card below. */
+  /* Form grid: label on the left, control on the right. The <datalist>
+     elements render as display:none by default, so they sit invisibly
+     in the grid cells without disturbing the layout. */
   .form {
     display: grid;
     grid-template-columns: 140px 1fr;
@@ -522,30 +439,6 @@
   .form .row:last-child select {
     border-bottom: 0;
   }
-
-  /* Reused kv block from OverviewTab. */
-  .kv {
-    margin: 0;
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    font-size: 12px;
-  }
-  .kv dt {
-    padding: 6px var(--gap-3);
-    color: var(--fg-dim);
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--sans);
-  }
-  .kv dd {
-    margin: 0;
-    padding: 6px var(--gap-3);
-    border-bottom: 1px solid var(--border);
-    color: var(--fg);
-    overflow-wrap: anywhere;
-  }
-  .kv dt:last-of-type,
-  .kv dd:last-of-type { border-bottom: 0; }
 
   /* Actions row matches FilterSidebar.actions, including the primary
      button rule. Single .primary that uses var(--accent) with --bg text

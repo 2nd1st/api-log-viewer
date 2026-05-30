@@ -335,10 +335,6 @@
     <dl class="kv">
       <dt>what</dt>
       <dd>api-log-viewer — a Svelte 5 client for the api-log recorder</dd>
-      <dt>philosophy</dt>
-      <dd>
-        <a href="PHILOSOPHY.md" target="_blank" rel="noopener noreferrer">PHILOSOPHY.md</a>
-      </dd>
       <dt>upstream</dt>
       <dd>
         <a
