@@ -120,16 +120,18 @@
 </div>
 
 <style>
-  /* Role-edge accent — restraint variant of "color block per role".
-     Each role gets a 2px LEFT border in a different shade. Backgrounds
-     stay flat. This is the only role-coded visual signal. */
+  /* Phase 2B block frame — 4px left role rail + hairline bottom only.
+     No top/right border, no card background, no shadow. Role rail is
+     the only role-coded visual signal. */
   .block {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
-    padding: var(--gap-2) var(--gap-3);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
-    border-left: 2px solid transparent;
+    border-left: 4px solid var(--border-strong);
   }
   .block.role-user      { border-left-color: var(--fg-dim); }
   .block.role-assistant { border-left-color: var(--accent); }
@@ -139,27 +141,28 @@
   .head {
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
-    font-family: var(--mono);
-    font-size: 11px;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     line-height: 1;
   }
 
+  /* Role label — flat 10px uppercase muted, no chip / no pill bg.
+     The left rail carries role identity; the label just names it. */
   .role {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 500;
+    font-size: var(--size-label);
+    color: var(--fg-muted);
   }
-  .role-user      .role { color: var(--fg-muted); }
-  .role-assistant .role { color: var(--accent); }
-  .role-system    .role { color: var(--fg-dim); }
-  .role-developer .role { color: var(--fg-dim); }
 
   .meta {
     margin-left: auto;
     display: flex;
-    gap: var(--gap-3);
+    gap: var(--space-3);
     color: var(--fg-dim);
+    font-size: var(--size-label);
   }
   .meta-item { white-space: nowrap; }
 

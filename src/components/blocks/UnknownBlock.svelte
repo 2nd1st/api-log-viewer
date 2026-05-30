@@ -95,58 +95,70 @@
 </div>
 
 <style>
+  /* Phase 2B block frame — 4px left rail + hairline bottom only.
+     Unknown blocks don't fit the named role/category buckets, so the
+     rail defaults to --border-strong; the head row's role label and
+     "unknown" kind chip carry identity. */
   .block--unknown {
-    /* No card background — the timeline supplies an 8px gap and a single
-       hairline divider between blocks (handled by the parent list). */
-    padding: var(--gap-2) 0;
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
+    border-left: 4px solid var(--border-strong);
     color: var(--fg);
-    font-family: var(--sans);
+    font-family: var(--font-sans);
   }
 
   .header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--gap-3);
-    margin-bottom: var(--gap-2);
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
   }
 
   .header-left {
     display: flex;
     align-items: baseline;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     min-width: 0;
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .role {
-    font-size: 10px;
+    font-size: var(--size-label);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
   }
 
   .glyph {
     color: var(--fg-muted);
-    font-family: var(--mono);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
   }
 
+  /* Type indicator "unknown" — lowercase outline chip per Phase 2B spec. */
   .kind {
     color: var(--fg-muted);
-    font-size: 12px;
+    font-size: var(--size-label);
+    text-transform: lowercase;
+    padding: 1px 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    line-height: 1;
   }
 
   .sep {
     color: var(--fg-dim);
-    font-size: 11px;
+    font-size: var(--size-label);
   }
 
   .sub {
     color: var(--fg-muted);
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -156,31 +168,31 @@
   .header-right {
     display: flex;
     align-items: baseline;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     flex-shrink: 0;
   }
 
   .meta {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
   }
 
   .parse-error {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--warn);
-    margin-bottom: var(--gap-2);
+    margin-bottom: var(--space-2);
   }
 
+  /* Mono body — raw unknown payload. Subtle outline, no card bg. */
   .body {
     margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    background: var(--bg-elev);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--mono);
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     line-height: 1.5;
     color: var(--fg);
     white-space: pre-wrap;

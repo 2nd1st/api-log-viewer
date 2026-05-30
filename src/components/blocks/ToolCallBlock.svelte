@@ -83,20 +83,23 @@
 </div>
 
 <style>
+  /* Phase 2B block frame — 4px left rail (tool category = --border-strong)
+     + hairline bottom only. No top/right border, no card background. */
   .block {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
-    padding: var(--gap-2) var(--gap-3);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
-    /* Tool calls are model-side actions — share the assistant edge color. */
-    border-left: 2px solid var(--accent);
+    border-left: 4px solid var(--border-strong);
   }
 
   .row {
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
+    gap: var(--space-2);
   }
 
   .row--top {
@@ -104,43 +107,44 @@
     min-height: 14px;
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .role {
-    font-size: 10px;
+    font-size: var(--size-label);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--fg-muted);
   }
 
   .meta {
     display: flex;
-    gap: var(--gap-2);
-    font-family: var(--mono);
-    font-size: 11px;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
   }
 
   .meta__item + .meta__item::before {
     content: '·';
-    margin-right: var(--gap-2);
+    margin-right: var(--space-2);
     color: var(--border-strong);
   }
 
   .row--header {
     flex-wrap: wrap;
-    gap: var(--gap-2);
-    font-size: 13px;
+    gap: var(--space-2);
+    font-size: var(--size-input);
   }
 
   .glyph {
     color: var(--fg-muted);
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     width: 1ch;
     display: inline-block;
     text-align: center;
   }
 
   .tool-name {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     color: var(--fg);
   }
 
@@ -148,17 +152,25 @@
     color: var(--border-strong);
   }
 
+  /* Type indicator — lowercase outline chip per Phase 2B spec:
+     10px, no background fill, 1px var(--border-strong) outline,
+     1px padding, --radius-sm corners. */
   .kind {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-muted);
+    text-transform: lowercase;
+    padding: 1px 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    line-height: 1;
   }
 
   .id,
   .id-link {
     margin-left: auto;
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
   }
 
@@ -174,18 +186,19 @@
     text-decoration: underline;
   }
   .id-link:focus-visible {
-    outline: 1px solid var(--accent-dim);
+    outline: 1px solid var(--accent);
     outline-offset: 2px;
   }
 
+  /* Mono body for tool_call args per spec. No card background — just
+     a subtle outline so the args block reads as code, not as a card. */
   .body {
     margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    background: var(--bg-elev);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--mono);
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     line-height: 1.5;
     color: var(--fg);
     white-space: pre-wrap;

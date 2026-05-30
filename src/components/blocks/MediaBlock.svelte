@@ -224,38 +224,43 @@
 </div>
 
 <style>
-  /* Hairline-only block. No background fill, no role-edge accent —
-     media is rare enough that adding a second role-coded signal here
-     would compete with TextBlock's left edge. We rely entirely on
-     the head row's role label. */
+  /* Phase 2B block frame — 4px left rail + hairline bottom only.
+     MediaBlock has no role-class wiring (markup is frozen this pass)
+     so the rail defaults to --border-strong. The head row's role
+     label still carries role identity in text. */
   .block {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
-    padding: var(--gap-2) var(--gap-3);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
+    border-left: 4px solid var(--border-strong);
   }
 
   .head {
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
-    font-family: var(--mono);
-    font-size: 11px;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     line-height: 1;
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .role {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 500;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
+    font-size: var(--size-label);
   }
 
   .title {
     display: inline-flex;
     align-items: center;
-    gap: var(--gap-1);
+    gap: var(--space-1);
     color: var(--fg-muted);
   }
 
@@ -265,19 +270,26 @@
     color: var(--fg-dim);
   }
 
+  /* Type indicator — lowercase outline chip per Phase 2B spec. */
   .kind {
     text-transform: lowercase;
     letter-spacing: 0.02em;
+    font-size: var(--size-label);
+    padding: 1px 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    line-height: 1;
+    color: var(--fg-muted);
   }
 
   .meta {
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     color: var(--fg-dim);
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     flex-wrap: wrap;
     justify-content: flex-end;
   }
@@ -287,7 +299,7 @@
   .body {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
+    gap: var(--space-2);
   }
 
   /* ── Image ───────────────────────────────────────────────────────
@@ -298,7 +310,7 @@
     padding: 0;
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     cursor: zoom-in;
     line-height: 0;
     overflow: hidden;
@@ -332,7 +344,7 @@
     max-width: 100%;
     max-height: 360px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
   }
 
   /* ── File / Document / Other ────────────────────────────────────── */
@@ -340,10 +352,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--gap-3);
-    padding: var(--gap-2) var(--gap-3);
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
   }
 
   .file-info {
@@ -355,7 +367,7 @@
   }
 
   .file-name {
-    font-size: 12px;
+    font-size: var(--size-body);
     color: var(--fg);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -363,10 +375,10 @@
   }
 
   .file-meta {
-    font-size: 11px;
+    font-size: var(--size-label);
     color: var(--fg-dim);
     display: flex;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     flex-wrap: wrap;
   }
 
@@ -374,16 +386,16 @@
 
   .dl {
     flex-shrink: 0;
-    font-size: 11px;
+    font-size: var(--size-label);
     line-height: 1;
     padding: 4px 10px;
     background: transparent;
     color: var(--accent);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     cursor: pointer;
     text-decoration: none;
-    font-family: var(--mono);
+    font-family: var(--font-mono);
   }
   .dl:hover {
     border-color: var(--accent);
@@ -398,11 +410,11 @@
     color: var(--fg-dim);
   }
 
-  .mono { font-family: var(--mono); }
+  .mono { font-family: var(--font-mono); }
 
   .err {
-    font-size: 11px;
+    font-size: var(--size-label);
     color: var(--err);
-    font-family: var(--mono);
+    font-family: var(--font-mono);
   }
 </style>

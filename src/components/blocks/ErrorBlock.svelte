@@ -84,19 +84,21 @@
 </div>
 
 <style>
-  /* The block is a self-contained padded box. No outer margin, no
-     bottom border — the container owns inter-block spacing (8px gap +
-     hairline divider).
-
-     The --err accent is intentionally muted: a single 2px left border
-     and the ⚠ glyph + error_type label colored. No tinted background. */
+  /* Phase 2B block frame — 4px left rail (error category =
+     --border-strong per spec) + hairline bottom only. The --err
+     severity color still appears inline on the ⚠ glyph and the
+     error_type label, so the row reads as a failure without the
+     rail competing for status semantics. */
   .block--error {
     position: relative;
-    padding: var(--gap-3) var(--gap-3) var(--gap-3) var(--gap-4);
-    border-left: 2px solid var(--err);
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    border-left: 4px solid var(--border-strong);
     background: transparent;
-    font-family: var(--sans);
-    font-size: 13px;
+    font-family: var(--font-sans);
+    font-size: var(--size-input);
     color: var(--fg);
   }
 
@@ -105,16 +107,17 @@
   .head {
     display: flex;
     align-items: baseline;
-    gap: var(--gap-3);
-    margin-bottom: var(--gap-2);
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .role {
-    font-family: var(--mono);
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     flex: none;
   }
 
@@ -125,15 +128,21 @@
     flex: none;
   }
   .glyph {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     color: var(--err);
     /* The ⚠ glyph is wide in some fonts; nudge baseline so it sits
        with the lowercase "error" text without dragging the row taller. */
     line-height: 1;
   }
+  /* Type indicator "error" — lowercase outline chip per Phase 2B spec. */
   .kind {
     color: var(--fg-muted);
-    font-size: 12px;
+    font-size: var(--size-label);
+    text-transform: lowercase;
+    padding: 1px 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    line-height: 1;
   }
 
   .meta {
@@ -141,8 +150,8 @@
     display: inline-flex;
     align-items: baseline;
     gap: 4px;
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
     flex: none;
   }
@@ -160,8 +169,8 @@
   }
 
   .error-type {
-    font-family: var(--mono);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     color: var(--err);
     /* Slight de-emphasis vs. pure --err on every glyph — these are
        muted error codes, not alarms. */
@@ -170,12 +179,11 @@
 
   .message {
     margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    background: var(--bg-elev);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--mono);
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     color: var(--fg);
     white-space: pre-wrap;
     word-break: break-word;
@@ -186,8 +194,8 @@
     display: inline-flex;
     align-items: baseline;
     gap: 8px;
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
   }
   .code-label {
     color: var(--fg-dim);
@@ -196,9 +204,8 @@
   }
   .code-val {
     color: var(--fg-muted);
-    background: var(--bg-elev);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     padding: 1px 6px;
   }
 </style>

@@ -85,11 +85,16 @@
 </div>
 
 <style>
+  /* Phase 2B block frame — 4px left rail (reasoning category =
+     --border-strong) + hairline bottom only. No top/right border. */
   .block {
     color: var(--fg-dim);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
-    padding: var(--gap-2) 0;
-    font-size: 13px;
+    border-left: 4px solid var(--border-strong);
+    padding: var(--space-3);
+    font-size: var(--size-input);
   }
 
   .head {
@@ -97,7 +102,7 @@
     display: grid;
     grid-template-columns: auto auto 1fr auto;
     align-items: center;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     background: transparent;
     border: 0;
     border-radius: 0;
@@ -111,31 +116,32 @@
   .head:disabled { cursor: default; }
   .has-body .head:hover .role { color: var(--fg-muted); }
   .head:focus-visible {
-    outline: 1px solid var(--accent-dim);
+    outline: 1px solid var(--accent);
     outline-offset: 2px;
   }
 
   .marker {
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
     color: var(--fg-dim);
     width: 10px;
     display: inline-block;
     text-align: center;
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .role {
-    font-size: 10px;
+    font-size: var(--size-label);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--fg-dim);
-    font-family: var(--sans);
+    color: var(--fg-muted);
+    font-family: var(--font-sans);
     white-space: nowrap;
   }
 
   .summary {
-    font-family: var(--sans);
-    font-size: 12px;
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
     color: var(--fg-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -146,8 +152,8 @@
 
   .meta {
     display: inline-flex;
-    gap: var(--gap-2);
-    font-size: 11px;
+    gap: var(--space-2);
+    font-size: var(--size-label);
     color: var(--fg-dim);
     text-align: right;
     white-space: nowrap;
@@ -159,23 +165,25 @@
   }
 
   .body {
-    margin-top: var(--gap-2);
-    padding: var(--gap-2) var(--gap-3);
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     border-left: 1px solid var(--border);
     margin-left: 4px;
   }
   .summary-line {
     color: var(--fg-muted);
-    font-family: var(--sans);
-    font-size: 13px;
-    margin-bottom: var(--gap-2);
+    font-family: var(--font-sans);
+    font-size: var(--size-input);
+    margin-bottom: var(--space-2);
   }
+  /* Reasoning body — mono, since it's raw model trace text. */
   .text {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--fg-muted);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     line-height: 1.55;
   }
 </style>

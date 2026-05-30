@@ -83,11 +83,16 @@
 </div>
 
 <style>
+  /* Phase 2B block frame — 4px left rail (tool category = --border-strong)
+     + hairline bottom only. Error variant keeps --err on the rail so
+     the row reads "this one failed" at a glance; --err is severity,
+     not role, so the cross-cutting accent rule is preserved. */
   .block {
-    padding: var(--gap-2) var(--gap-3);
+    padding: var(--space-3);
+    border-top: 0;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
-    /* Tool results are model-side responses — share the assistant edge color. */
-    border-left: 2px solid var(--accent);
+    border-left: 4px solid var(--border-strong);
   }
   .block:last-child {
     border-bottom: none;
@@ -99,22 +104,23 @@
   .block__header {
     display: flex;
     align-items: baseline;
-    gap: var(--gap-2);
-    font-size: 12px;
+    gap: var(--space-2);
+    font-size: var(--size-body);
     color: var(--fg-muted);
   }
 
+  /* Role label — 10px uppercase muted, no chip / no pill bg. */
   .block__role {
     text-transform: uppercase;
-    font-size: 10px;
+    font-size: var(--size-label);
     letter-spacing: 0.06em;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
     min-width: 36px;
   }
 
   .block__glyph {
     color: var(--fg-muted);
-    font-size: 12px;
+    font-size: var(--size-body);
     line-height: 1;
   }
 
@@ -124,45 +130,46 @@
 
   .block__arrow {
     color: var(--fg-dim);
-    font-size: 12px;
+    font-size: var(--size-body);
     line-height: 1;
   }
 
   .block__tool-name {
     color: var(--fg);
-    font-size: 12px;
+    font-size: var(--size-body);
   }
 
   .block__refs {
     color: var(--accent);
-    font-size: 11px;
-    margin-left: var(--gap-1);
+    font-size: var(--size-meta);
+    margin-left: var(--space-1);
   }
   .block__refs:hover {
-    color: var(--accent-dim);
+    color: var(--accent);
     text-decoration: underline;
   }
 
   .block__meta {
     margin-left: auto;
     display: inline-flex;
-    gap: var(--gap-2);
-    font-size: 11px;
+    gap: var(--space-2);
+    font-size: var(--size-label);
     color: var(--fg-dim);
   }
 
   .block__body {
-    margin-top: var(--gap-2);
+    margin-top: var(--space-2);
     padding-left: 44px; /* align under tool name, past role label */
   }
 
+  /* Mono body for tool_result per spec. Subtle outline, no card bg. */
   .result {
     margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    background: var(--bg-elev);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: var(--size-body);
     line-height: 1.5;
     color: var(--fg);
     white-space: pre-wrap;

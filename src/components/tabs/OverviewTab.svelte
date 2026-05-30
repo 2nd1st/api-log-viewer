@@ -330,15 +330,15 @@
 
 <div class="overview">
   <!-- THIS TRACE -->
-  <section class="card">
-    <h3>this trace</h3>
+  <section class="section">
+    <h3 class="section-label">this trace</h3>
     <dl class="kv">
-      <dt>id</dt>            <dd class="mono">{row.id ?? '—'}</dd>
-      <dt>method · path</dt> <dd class="mono">{row.method ?? '—'} {row.path ?? ''}</dd>
-      <dt>status</dt>        <dd class="mono">{row.status ?? '—'}</dd>
-      <dt>model</dt>         <dd class="mono">{row.model ?? '—'}</dd>
-      <dt>duration</dt>      <dd class="mono">{fmtMs(durMs)}</dd>
-      <dt>tokens</dt>        <dd class="mono">
+      <dt>id</dt>            <dd>{row.id ?? '—'}</dd>
+      <dt>method · path</dt> <dd>{row.method ?? '—'} {row.path ?? ''}</dd>
+      <dt>status</dt>        <dd>{row.status ?? '—'}</dd>
+      <dt>model</dt>         <dd>{row.model ?? '—'}</dd>
+      <dt>duration</dt>      <dd>{fmtMs(durMs)}</dd>
+      <dt>tokens</dt>        <dd>
         {fmtNum(row.prompt_tokens)} in · {fmtNum(row.completion_tokens)} out
         {#if row.total_tokens != null} · {fmtNum(row.total_tokens)} total{/if}
       </dd>
@@ -346,20 +346,20 @@
   </section>
 
   <!-- CLIENT & SOURCE -->
-  <section class="card">
-    <h3>client &amp; source</h3>
+  <section class="section">
+    <h3 class="section-label">client &amp; source</h3>
     <dl class="kv">
-      <dt>client</dt> <dd class="mono">
+      <dt>client</dt> <dd>
         <strong>{client.family}</strong>{#if client.version} <span class="dim">{client.version}</span>{/if}
         {#if client.raw && client.family !== client.raw}
           <div class="ua dim">{client.raw}</div>
         {/if}
       </dd>
-      <dt>key</dt>      <dd class="mono">{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
-      <dt>upstream</dt> <dd class="mono">{row.upstream ?? '—'}</dd>
-      <dt>client ip</dt><dd class="mono">{row.client ?? '—'}</dd>
+      <dt>key</dt>      <dd>{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
+      <dt>upstream</dt> <dd>{row.upstream ?? '—'}</dd>
+      <dt>client ip</dt><dd>{row.client ?? '—'}</dd>
       <dt>prompt source</dt>
-      <dd class="mono">
+      <dd>
         {#if !systemText}
           <span class="dim">(no system text)</span>
         {:else}
@@ -373,18 +373,18 @@
   </section>
 
   <!-- CONTENT SHAPE -->
-  <section class="card">
-    <h3>content shape</h3>
+  <section class="section">
+    <h3 class="section-label">content shape</h3>
     <dl class="kv">
       <dt>blocks</dt>
-      <dd class="mono">
+      <dd>
         {#each Object.entries(counts) as [k, n] (k)}
           {#if n > 0}<span class="chip">{n} {k}</span>{/if}
         {/each}
         {#if Object.values(counts).every((n) => !n)}<span class="dim">—</span>{/if}
       </dd>
       <dt>tools called</dt>
-      <dd class="mono">
+      <dd>
         {#if toolInventory.length === 0}
           <span class="dim">—</span>
         {:else}
@@ -396,9 +396,9 @@
         {/if}
       </dd>
       <dt>response shape</dt>
-      <dd class="mono">{respShape || '—'}</dd>
+      <dd>{respShape || '—'}</dd>
       <dt>truncation</dt>
-      <dd class="mono">
+      <dd>
         {#if !truncatedReq && !truncatedResp}
           <span class="dim">none</span>
         {:else}
@@ -410,26 +410,26 @@
   </section>
 
   <!-- MODEL BEHAVIOR -->
-  <section class="card">
-    <h3>model behavior</h3>
+  <section class="section">
+    <h3 class="section-label">model behavior</h3>
     <dl class="kv">
       <dt>stop reason</dt>
-      <dd class="mono">
+      <dd>
         <span class={toneClass(stop.tone)} aria-hidden="true"></span>
         {stop.label}
       </dd>
       <dt>reasoning blocks</dt>
-      <dd class="mono">{reasoningCount}</dd>
+      <dd>{reasoningCount}</dd>
       <dt>tool calls</dt>
-      <dd class="mono">{toolCallCount}</dd>
+      <dd>{toolCallCount}</dd>
       <dt>first reply</dt>
-      <dd class="mono">{firstReplyMs == null ? '—' : fmtMs(firstReplyMs)}</dd>
+      <dd>{firstReplyMs == null ? '—' : fmtMs(firstReplyMs)}</dd>
     </dl>
   </section>
 
   <!-- SESSION -->
-  <section class="card">
-    <h3>session</h3>
+  <section class="section">
+    <h3 class="section-label">session</h3>
     {#if !row.session_root_id}
       <div class="dim foot">(no session)</div>
     {:else if session.kind === 'loading'}
@@ -440,17 +440,17 @@
       {@const s = session.stats}
       {@const span = sessionSpanMs()}
       <dl class="kv">
-        <dt>session root</dt> <dd class="mono">{shortId(row.session_root_id)}</dd>
-        <dt>turns</dt>        <dd class="mono">{s.turns}</dd>
-        <dt>tokens (sum)</dt> <dd class="mono">{fmtNum(s.promptTokensTotal)} in · {fmtNum(s.completionTokensTotal)} out</dd>
-        <dt>span</dt>         <dd class="mono">{fmtMs(span)}</dd>
-        <dt>models</dt>       <dd class="mono">
+        <dt>session root</dt> <dd>{shortId(row.session_root_id)}</dd>
+        <dt>turns</dt>        <dd>{s.turns}</dd>
+        <dt>tokens (sum)</dt> <dd>{fmtNum(s.promptTokensTotal)} in · {fmtNum(s.completionTokensTotal)} out</dd>
+        <dt>span</dt>         <dd>{fmtMs(span)}</dd>
+        <dt>models</dt>       <dd>
           {#if s.distinctModels.length === 0}—
           {:else}{s.distinctModels.join(', ')}{/if}
         </dd>
         {#if row.parent_id}
           <dt>parent trace</dt>
-          <dd class="mono">
+          <dd>
             <a href="#/traces/{row.parent_id}" onclick={(e) => clickParent(e, row.parent_id!)}>{shortId(row.parent_id)}</a>
           </dd>
         {/if}
@@ -465,67 +465,85 @@
 </div>
 
 <style>
+  /* Phase 2B flatten — no card chrome, no bordered group. Each section
+     is a 10px uppercase muted label with a hairline underneath, then a
+     stack of label/value rows where every row also ends in a hairline.
+     The whole tab reads as one continuous table of facts, not a
+     stack of cards. */
+
   .overview {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-4);
+    gap: var(--space-6);
     padding: 0;
+    background: var(--surface);
   }
 
-  .card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
+  .section {
+    display: flex;
+    flex-direction: column;
   }
-  .card h3 {
-    margin: 0;
-    padding: var(--gap-2) var(--gap-3);
-    font-size: 10px;
+
+  .section-label {
+    margin: 0 0 var(--space-2) 0;
+    padding: 0 0 var(--space-2) 0;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--fg-muted);
     border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
   }
 
   .kv {
     margin: 0;
     display: grid;
     grid-template-columns: 140px 1fr;
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .kv dt {
-    padding: 6px var(--gap-3);
-    color: var(--fg-dim);
+    padding: var(--space-2) var(--space-3) var(--space-2) 0;
+    color: var(--fg-muted);
     border-bottom: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--sans);
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .kv dd {
     margin: 0;
-    padding: 6px var(--gap-3);
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--border);
     color: var(--fg);
     overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .kv dt:last-of-type,
   .kv dd:last-of-type { border-bottom: 0; }
 
+  /* Block-type chip — outline-only, no background fill. */
   .chip {
     display: inline-block;
     margin-right: 6px;
     padding: 1px 6px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    background: var(--bg-elev);
-    font-size: 11px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--size-label);
     color: var(--fg-muted);
   }
-  .ua { margin-top: 4px; font-size: 11px; word-break: break-all; }
+  .ua { margin-top: 4px; font-size: var(--size-meta); word-break: break-all; }
   .dim { color: var(--fg-dim); }
-  .err { padding: 10px var(--gap-3); color: var(--err); font-size: 12px; }
-  .foot { padding: var(--gap-2) var(--gap-3); font-size: 11px; line-height: 1.4; }
+  .err {
+    padding: var(--space-2) 0;
+    color: var(--err);
+    font-size: var(--size-meta);
+  }
+  .foot {
+    padding: var(--space-2) 0;
+    font-size: var(--size-meta);
+    line-height: 1.4;
+  }
 
   /* Tool inventory: a tight, mono list. No background fill — just
      spacing + a faint left edge to set it apart from the surrounding
@@ -539,7 +557,7 @@
     gap: 2px;
   }
   .tool-list li {
-    padding-left: var(--gap-2);
+    padding-left: var(--space-2);
     border-left: 1px solid var(--border);
     color: var(--fg);
   }
@@ -564,14 +582,14 @@
   .dot.warn { background: var(--warn); }
   .dot.err  { background: var(--err); }
 
-  /* Truncation badge. Warn-toned outline, no fill. */
+  /* Truncation badge — warn-toned outline only, no fill. */
   .badge {
     display: inline-block;
     margin-right: 6px;
     padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 11px;
-    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--size-label);
+    border: 1px solid var(--border-strong);
     color: var(--fg-muted);
   }
   .badge.warn {
