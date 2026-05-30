@@ -1,7 +1,7 @@
 # api-log-viewer
 
-Separate frontend for [api-log](http://gitea.homelab.lan/leoyun/api-log) —
-the transparent HTTP recording proxy for LLM gateway traffic.
+Separate frontend for `api-log` — the transparent HTTP recording proxy
+for LLM gateway traffic.
 
 Two-repo layout per CLIProxyAPI's separation philosophy: the backend
 exposes pure HTTP API; this repo is one of (potentially many) frontends.
@@ -10,7 +10,7 @@ exposes pure HTTP API; this repo is one of (potentially many) frontends.
 
 - Svelte 5 (runes) + Vite + TypeScript
 - No CSS framework, no component library, no router lib — kept restrained
-- Bundle target < 50 KB gzipped
+- Single-bundle SPA, ~77 KB JS gzipped, hash router
 
 ## Develop
 
@@ -35,10 +35,14 @@ pnpm build
 Caddy example:
 
 ```caddyfile
-apilog-sub2.homelab.lan {
+your.domain {
   root * /opt/api-log-viewer/dist
   file_server
   handle /api/*   { reverse_proxy 127.0.0.1:7862 }
   handle /healthz { reverse_proxy 127.0.0.1:7862 }
 }
 ```
+
+## License
+
+[MIT](./LICENSE) — © 2026 Leo Yun.
