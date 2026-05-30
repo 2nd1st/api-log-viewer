@@ -1,29 +1,44 @@
 <script lang="ts">
-  // Settings — viewer-side preferences + token surface + read-only
-  // backend info + about.
+  // Settings — viewer-side preferences + token surface + about.
   //
-  // PHILOSOPHY (viewer/PHILOSOPHY.md):
-  //   - The viewer holds no state the backend doesn't already know
-  //     about; everything here is either a local presentation
-  //     preference (display section) or a read-only mirror of backend
-  //     state (backend section). Plugin/gate/redact config does NOT
-  //     live here — that's a backend YAML concern (principle 6).
-  //   - Restraint aesthetic: same .card + .kv pattern as
-  //     OverviewTab. No role-coded background fills, no decorative
-  //     accents. Single --accent. Severity tones only on signal.
-  //   - We render what's in /healthz; if a field is absent (older
-  //     backend that hasn't been redeployed with total_bytes yet) we
-  //     show "—".
+  // PHILOSOPHY (viewer/PHILOSOPHY.md + Phase R7):
+  //   - "It is not THE frontend; it is A frontend." Composable, not
+  //     authoritative. Plugin/gate/redact config does NOT live here —
+  //     that's a backend YAML concern (principle 6).
+  //   - Operational, not analytics-heavy. Phase R7 narrows the page:
+  //     drop the live healthz counters (uptime/appended/drops/data-dir/
+  //     last-poll) — that surface duplicates what CPA/sub2gpt already
+  //     renders. Keep About → version + healthz endpoint URL only.
+  //   - Single accent (--accent, teal-300) reserved for active state,
+  //     selected row, and focus ring ONLY. Toggle on-state uses
+  //     high-contrast var(--fg) per the Vercel-leaning delta, NOT accent.
+  //   - i18n: every visible string goes through t(). The dictionaries
+  //     (en.ts / zh.ts) are frozen for this phase; on a missing key
+  //     t() returns the key string itself which would surface as
+  //     literal "settings.xxx" text. Every key used here is verified
+  //     present in en.ts before write.
   //
-  // localStorage keys (do not rename — operators may have existing
-  // values; same constants as lib/api.ts and TracesList.svelte):
+  // SECTIONS (4 cards, Vercel chrome):
+  //   1. Display          — theme toggle, language toggle
+  //   2. Default Filters  — default path filter, traces auto-refresh,
+  //                         save-attachments (backend-connected), reset
+  //   3. Auth             — masked admin token, change button, clear
+  //                         button (calls setToken('') in place)
+  //   4. About            — viewer version (hardcoded — no vite define),
+  //                         healthz endpoint URL, upstream repo link
+  //
+  // localStorage keys (do not rename — same constants as lib/api.ts and
+  // TracesList.svelte):
   //   apilog.default_path        — default path filter, fallback '/v1/*'
   //   apilog.traces.autorefresh  — traces list auto-refresh cadence
   //   apilog.token               — admin Bearer token
+  //   apilog.theme               — 'dark' | 'light' (lib/theme.ts)
+  //   apilog.lang                — 'en' | 'zh' (lib/i18n.svelte.ts)
 
   import { onMount } from 'svelte';
-  import { humanBytes } from '../lib/format';
-  import { DEFAULT_PATH_KEY, getToken } from '../lib/api';
+  import { DEFAULT_PATH_KEY, api, getToken, setToken } from '../lib/api';
+  import { getTheme, setTheme, type Theme } from '../lib/theme';
+  import { getLang, setLang, t } from '../lib/i18n.svelte';
 
   interface Props {
     authFetch: (path: string, opts?: RequestInit) => Promise<Response>;
@@ -32,7 +47,28 @@
 
   const { authFetch, onOpenAuthModal }: Props = $props();
 
-  // ---------- DISPLAY: default path filter ----------
+  // ---------- DISPLAY: theme ----------
+  //
+  // getTheme() is a plain localStorage read, not a rune — mirror in
+  // local $state so the toggle's on/off visual reacts on click.
+  let themeValue = $state<Theme>(getTheme());
+
+  function toggleThemeRow() {
+    const next: Theme = themeValue === 'dark' ? 'light' : 'dark';
+    themeValue = next;
+    setTheme(next);
+  }
+
+  // ---------- DISPLAY: language ----------
+  //
+  // getLang() is backed by module $state — reading it in-template is
+  // reactive (Header relies on the same pattern). No local mirror.
+
+  function toggleLangRow() {
+    setLang(getLang() === 'en' ? 'zh' : 'en');
+  }
+
+  // ---------- DEFAULT FILTERS: default path ----------
 
   const PATH_DEFAULT = '/v1/*';
 
@@ -64,80 +100,7 @@
     }, 1000);
   }
 
-  // ---------- DISPLAY: save attachments (backend media extraction) ----------
-  //
-  // Backend GET /api/config/media → { save_attachments: bool, source: string }
-  // Backend PUT /api/config/media { save_attachments } persists to
-  // runtime_overrides.json and updates in-memory config so subsequent
-  // traces honor it immediately. Per Phase K § 5.3 the change is NOT
-  // retroactive — existing files on disk are left alone.
-  //
-  // This is the only DISPLAY-section control that talks to the backend
-  // (everything else is local localStorage). We render it here anyway
-  // because operationally the operator thinks of it as a viewer setting
-  // — the "do extracted files show up in the export bundle" knob.
-
-  type MediaCfgState =
-    | { kind: 'idle' }
-    | { kind: 'loading' }
-    | { kind: 'error'; message: string }
-    | { kind: 'ready'; value: boolean; source: string };
-
-  let mediaCfg = $state<MediaCfgState>({ kind: 'idle' });
-  let mediaHintVisible = $state<boolean>(false);
-  let mediaHintTimer: ReturnType<typeof setTimeout> | null = null;
-
-  async function loadMediaCfg() {
-    mediaCfg = { kind: 'loading' };
-    try {
-      const r = await authFetch('api/config/media');
-      if (!r.ok) throw new Error(String(r.status));
-      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
-      mediaCfg = {
-        kind: 'ready',
-        value: j.save_attachments === true,
-        source: typeof j.source === 'string' ? j.source : 'default',
-      };
-    } catch (e: any) {
-      mediaCfg = { kind: 'error', message: e?.message ?? String(e) };
-    }
-  }
-
-  async function onMediaToggle(e: Event) {
-    const checked = (e.currentTarget as HTMLInputElement).checked;
-    // Optimistic UI: flip immediately, revert on failure.
-    const prev = mediaCfg;
-    mediaCfg =
-      mediaCfg.kind === 'ready'
-        ? { ...mediaCfg, value: checked }
-        : { kind: 'ready', value: checked, source: 'override' };
-    try {
-      const r = await authFetch('api/config/media', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ save_attachments: checked }),
-      });
-      if (!r.ok) throw new Error(String(r.status));
-      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
-      mediaCfg = {
-        kind: 'ready',
-        value: j.save_attachments === true,
-        source: typeof j.source === 'string' ? j.source : 'override',
-      };
-      mediaHintVisible = true;
-      if (mediaHintTimer) clearTimeout(mediaHintTimer);
-      mediaHintTimer = setTimeout(() => {
-        mediaHintVisible = false;
-      }, 1000);
-    } catch (e: any) {
-      mediaCfg =
-        prev.kind === 'ready'
-          ? prev
-          : { kind: 'error', message: e?.message ?? String(e) };
-    }
-  }
-
-  // ---------- DISPLAY: traces auto-refresh ----------
+  // ---------- DEFAULT FILTERS: traces auto-refresh ----------
 
   type RefreshOpt = 'off' | '5s' | '10s' | '30s' | '60s' | '5m';
   const REFRESH_OPTIONS: RefreshOpt[] = ['off', '5s', '10s', '30s', '60s', '5m'];
@@ -167,7 +130,77 @@
     }
   }
 
-  // ---------- DISPLAY: reset to defaults ----------
+  // ---------- DEFAULT FILTERS: save attachments (backend) ----------
+  //
+  // Backend GET /api/config/media → { save_attachments, source }
+  // Backend PUT /api/config/media { save_attachments } persists to
+  // runtime_overrides.json and updates in-memory config. Per Phase K
+  // § 5.3 the change is NOT retroactive — existing files left alone.
+  //
+  // This is the only Default-Filters row that talks to the backend.
+  // We keep it here (rather than dropping it with the healthz live
+  // counters) because it's tied to export — and the operator's #1
+  // post-v0 priority is bundle export.
+
+  type MediaCfgState =
+    | { kind: 'idle' }
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'ready'; value: boolean; source: string };
+
+  let mediaCfg = $state<MediaCfgState>({ kind: 'idle' });
+  let mediaHintVisible = $state<boolean>(false);
+  let mediaHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function loadMediaCfg() {
+    mediaCfg = { kind: 'loading' };
+    try {
+      const r = await authFetch('api/config/media');
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
+      mediaCfg = {
+        kind: 'ready',
+        value: j.save_attachments === true,
+        source: typeof j.source === 'string' ? j.source : 'default',
+      };
+    } catch (e: any) {
+      mediaCfg = { kind: 'error', message: e?.message ?? String(e) };
+    }
+  }
+
+  async function onMediaToggle() {
+    // Inline switch: derive next from the current ready value (or
+    // false if we never loaded). Optimistic UI — flip immediately,
+    // revert on failure.
+    if (mediaCfg.kind !== 'ready') return;
+    const next = !mediaCfg.value;
+    const prev = mediaCfg;
+    mediaCfg = { ...mediaCfg, value: next };
+    try {
+      const r = await authFetch('api/config/media', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ save_attachments: next }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as { save_attachments?: boolean; source?: string };
+      mediaCfg = {
+        kind: 'ready',
+        value: j.save_attachments === true,
+        source: typeof j.source === 'string' ? j.source : 'override',
+      };
+      mediaHintVisible = true;
+      if (mediaHintTimer) clearTimeout(mediaHintTimer);
+      mediaHintTimer = setTimeout(() => {
+        mediaHintVisible = false;
+      }, 1000);
+    } catch (e: any) {
+      mediaCfg = prev;
+      void e;
+    }
+  }
+
+  // ---------- DEFAULT FILTERS: reset ----------
 
   function resetDefaults() {
     try {
@@ -187,149 +220,122 @@
 
   // ---------- AUTH: masked token ----------
 
-  // We read the token through getToken() — same module-level cell the
-  // AuthModal writes to via setToken(). The masked display only updates
-  // when this component remounts or after the parent re-opens the modal
-  // and we get rerendered; that's intentional and matches the rest of
-  // the viewer's "snapshot on mount" stance.
+  // Snapshot the token on mount and on window focus — same as the
+  // pre-R7 component. AuthModal saves write through setToken() in
+  // lib/api.ts; we re-snapshot when the tab regains focus.
   let tokenSnapshot = $state<string>(getToken());
 
   function refreshTokenSnapshot() {
     tokenSnapshot = getToken();
   }
 
-  // Re-snapshot whenever the window regains focus — covers the case
-  // where the operator clicked "change token" and saved in the modal.
-  // No effect/derived loop; just a passive listener.
   onMount(() => {
     const onFocus = () => refreshTokenSnapshot();
     window.addEventListener('focus', onFocus);
+    // Backend-connected default-filters row — failures surface inline
+    // (404 → operator is on a pre-Phase-K backend, non-fatal).
+    void loadMediaCfg();
     return () => window.removeEventListener('focus', onFocus);
   });
 
+  // Operator prefers sk-XXX...XX9N shape — first 6 + last 4 with an
+  // ellipsis. Tokens shorter than 12 chars (would-be edge case) render
+  // in full.
   const maskedToken = $derived.by<string>(() => {
-    const t = tokenSnapshot;
-    if (!t) return '(not set)';
-    if (t.length <= 16) return t;
-    return t.slice(0, 8) + '…' + t.slice(-8);
+    const tok = tokenSnapshot;
+    if (!tok) return t('settings.adminTokenNotSet');
+    if (tok.length <= 12) return tok;
+    return tok.slice(0, 6) + '…' + tok.slice(-4);
   });
 
   function openAuthModal() {
     onOpenAuthModal();
-    // The modal closes async; refresh on focus covers the saved case.
+    // Modal close is async; the focus listener re-snapshots on
+    // focus regain so the masked display picks up the new value.
   }
 
-  // ---------- BACKEND: /healthz one-shot ----------
-
-  interface HealthzCounters {
-    appended?: number;
-    drop_writer_full?: number;
-    drop_jsonl_fail?: number;
-    drop_sqlite_fail?: number;
-    total_bytes?: number;
+  function clearToken() {
+    setToken('');
+    refreshTokenSnapshot();
   }
 
-  interface Healthz {
-    version?: string;
-    uptime_seconds?: number;
-    counters?: HealthzCounters;
-  }
-
-  type HealthzState =
-    | { kind: 'idle' }
-    | { kind: 'loading' }
-    | { kind: 'error'; message: string }
-    | { kind: 'ready'; data: Healthz; fetchedAt: number };
-
-  let healthz = $state<HealthzState>({ kind: 'idle' });
-
-  // Tick for "last poll: X ago". 1s cadence is enough.
-  let now = $state<number>(Date.now());
-
-  onMount(() => {
-    let cancelled = false;
-    healthz = { kind: 'loading' };
-    (async () => {
-      try {
-        const r = await authFetch('healthz');
-        if (!r.ok) throw new Error(String(r.status));
-        const j = (await r.json()) as Healthz;
-        if (cancelled) return;
-        healthz = { kind: 'ready', data: j, fetchedAt: Date.now() };
-      } catch (e: any) {
-        if (cancelled) return;
-        healthz = { kind: 'error', message: e?.message ?? String(e) };
-      }
-    })();
-
-    // Load backend media config in parallel; failures surface inline on
-    // the row, not as a global error (a 404 here would mean the operator
-    // is on an older backend without Phase K endpoints — non-fatal).
-    void loadMediaCfg();
-
-    const tick = setInterval(() => {
-      now = Date.now();
-    }, 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(tick);
-    };
-  });
-
-  function fmtUptime(s: number | undefined): string {
-    if (s == null || !Number.isFinite(s)) return '—';
-    const sec = Math.max(0, Math.floor(s));
-    const d = Math.floor(sec / 86400);
-    const h = Math.floor((sec % 86400) / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    return `${d}d ${h}h ${m}m`;
-  }
-
-  function fmtNum(n: number | null | undefined): string {
-    if (n == null) return '—';
-    return n.toLocaleString();
-  }
-
-  const dataDirLabel = $derived.by(() => {
-    if (healthz.kind !== 'ready') return '—';
-    const b = healthz.data.counters?.total_bytes;
-    if (b == null) return '—';
-    return humanBytes(b);
-  });
-
-  const appendedLabel = $derived.by(() => {
-    if (healthz.kind !== 'ready') return '—';
-    return fmtNum(healthz.data.counters?.appended);
-  });
-
-  const dropsTotalLabel = $derived.by(() => {
-    if (healthz.kind !== 'ready') return '—';
-    const c = healthz.data.counters || {};
-    const total =
-      ((c.drop_writer_full ?? 0) | 0) +
-      ((c.drop_jsonl_fail ?? 0) | 0) +
-      ((c.drop_sqlite_fail ?? 0) | 0);
-    return fmtNum(total);
-  });
-
-  const lastPollLabel = $derived.by(() => {
-    if (healthz.kind !== 'ready') return '—';
-    const ageSec = Math.max(0, Math.floor((now - healthz.fetchedAt) / 1000));
-    if (ageSec < 60) return `${ageSec}s ago`;
-    if (ageSec < 3600) return `${Math.floor(ageSec / 60)}m ago`;
-    return `${Math.floor(ageSec / 3600)}h ago`;
-  });
+  // ---------- ABOUT ----------
+  //
+  // VIEWER_VERSION is hardcoded — there's no vite define for it and
+  // package.json isn't readable at runtime. Bump in sync with
+  // package.json's "version" field when cutting a release.
+  const VIEWER_VERSION = '0.1.0';
+  const HEALTHZ_URL = api('healthz');
+  const UPSTREAM_URL = 'http://gitea.homelab.lan/leoyun/api-log-viewer';
 </script>
 
 <div class="settings">
-  <!-- DISPLAY -->
+  <!-- 1. DISPLAY -->
   <section class="card">
-    <h3>display</h3>
-    <dl class="kv">
-      <dt>default path filter</dt>
-      <dd>
-        <div class="row">
+    <header class="card-head">
+      <h3>{t('settings.display')}</h3>
+      <p class="sub">{t('settings.theme')} · {t('settings.language')}</p>
+    </header>
+
+    <div class="rows">
+      <div class="row">
+        <div class="label-col">
+          <label for="settings-theme-toggle" class="label">{t('settings.theme')}</label>
+        </div>
+        <div class="control-col">
+          <button
+            id="settings-theme-toggle"
+            type="button"
+            role="switch"
+            aria-checked={themeValue === 'light'}
+            class="switch"
+            class:on={themeValue === 'light'}
+            onclick={toggleThemeRow}
+            title={t('ui.themeToggle')}
+          >
+            <span class="knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label-col">
+          <label for="settings-lang-toggle" class="label">{t('settings.language')}</label>
+        </div>
+        <div class="control-col">
+          <button
+            id="settings-lang-toggle"
+            type="button"
+            role="switch"
+            aria-checked={getLang() === 'zh'}
+            class="switch"
+            class:on={getLang() === 'zh'}
+            onclick={toggleLangRow}
+            title={t('ui.langToggle')}
+          >
+            <span class="knob"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. DEFAULT FILTERS -->
+  <section class="card">
+    <header class="card-head">
+      <h3>{t('settings.defaultFilters')}</h3>
+      <p class="sub">{t('settings.defaultPathNote')}</p>
+    </header>
+
+    <div class="rows">
+      <div class="row">
+        <div class="label-col">
+          <label for="settings-default-path" class="label">{t('settings.defaultPath')}</label>
+          <div class="helper">{t('settings.defaultPathNote')}</div>
+        </div>
+        <div class="control-col path-control">
           <input
+            id="settings-default-path"
             type="text"
             bind:value={pathValue}
             onblur={persistPath}
@@ -343,278 +349,339 @@
             spellcheck="false"
             autocomplete="off"
           />
-          <button type="button" onclick={persistPath}>save</button>
-          <span class="hint" class:show={pathHintVisible}>saved</span>
+          <button type="button" class="btn" onclick={persistPath}>{t('settings.save')}</button>
+          <span class="hint" class:show={pathHintVisible}>{t('ui.saved')}</span>
         </div>
-        <div class="note">trailing <code>*</code> = prefix match. exact path = exact match. blank reverts to <code>/v1/*</code>.</div>
-      </dd>
+      </div>
 
-      <dt>save attachments</dt>
-      <dd>
-        <div class="row">
+      <div class="row">
+        <div class="label-col">
+          <label for="settings-refresh" class="label">{t('settings.tracesAutoRefresh')}</label>
+          <div class="helper">{t('settings.tracesAutoRefreshNote')}</div>
+        </div>
+        <div class="control-col">
+          <select id="settings-refresh" value={refreshOpt} onchange={onRefreshChange}>
+            {#each REFRESH_OPTIONS as opt (opt)}
+              <option value={opt}>{opt}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label-col">
+          <label for="settings-media-toggle" class="label">{t('settings.saveAttachments')}</label>
+          <div class="helper">{t('settings.saveAttachmentsNote')}</div>
+        </div>
+        <div class="control-col">
           {#if mediaCfg.kind === 'loading' || mediaCfg.kind === 'idle'}
-            <span class="dim mono">loading…</span>
+            <span class="dim">{t('ui.loading')}</span>
           {:else if mediaCfg.kind === 'error'}
-            <label class="row">
-              <input type="checkbox" disabled />
-              <span class="dim">unavailable ({mediaCfg.message})</span>
-            </label>
+            <span class="dim">{t('settings.saveAttachmentsUnavailable', { message: mediaCfg.message })}</span>
           {:else}
-            <label class="row">
-              <input
-                type="checkbox"
-                checked={mediaCfg.value}
-                onchange={onMediaToggle}
-              />
-              <span class="mono dim">source: {mediaCfg.source}</span>
-            </label>
-            <span class="hint" class:show={mediaHintVisible}>saved</span>
+            <button
+              id="settings-media-toggle"
+              type="button"
+              role="switch"
+              aria-checked={mediaCfg.value}
+              aria-label={t('settings.saveAttachments')}
+              class="switch"
+              class:on={mediaCfg.value}
+              onclick={onMediaToggle}
+            >
+              <span class="knob"></span>
+            </button>
+            <span class="mono dim source">{t('settings.saveAttachmentsSource', { source: mediaCfg.source })}</span>
+            <span class="hint" class:show={mediaHintVisible}>{t('ui.saved')}</span>
           {/if}
         </div>
-        <div class="note">writes extracted images/files to <code>data/&lt;date&gt;/&lt;keyhash&gt;/media/</code>. set in YAML or here; runtime value wins.</div>
-      </dd>
+      </div>
 
-      <dt>traces auto-refresh</dt>
-      <dd>
-        <select value={refreshOpt} onchange={onRefreshChange}>
-          {#each REFRESH_OPTIONS as opt (opt)}
-            <option value={opt}>{opt}</option>
-          {/each}
-        </select>
-        <div class="note">cadence for the traces list page-1 poller.</div>
-      </dd>
-
-      <dt>reset</dt>
-      <dd>
-        <button type="button" onclick={resetDefaults}>reset to defaults</button>
-        <div class="note">clears the display localStorage keys on this device.</div>
-      </dd>
-    </dl>
-  </section>
-
-  <!-- AUTH -->
-  <section class="card">
-    <h3>auth</h3>
-    <dl class="kv">
-      <dt>admin token</dt>
-      <dd>
-        <span class="mono">{maskedToken}</span>
-      </dd>
-      <dt>change</dt>
-      <dd>
-        <button type="button" onclick={openAuthModal}>change token</button>
-        <div class="note">
-          the token is sent as <code>Bearer</code> in <code>/api/*</code> and
-          <code>/healthz</code> requests; cleared on this device only.
+      <div class="row last">
+        <div class="label-col">
+          <span class="label">{t('settings.reset')}</span>
+          <div class="helper">{t('settings.resetNote')}</div>
         </div>
-      </dd>
-    </dl>
+        <div class="control-col">
+          <button type="button" class="btn" onclick={resetDefaults}>{t('settings.resetButton')}</button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- BACKEND -->
+  <!-- 3. AUTH -->
   <section class="card">
-    <h3>backend</h3>
-    {#if healthz.kind === 'loading'}
-      <div class="foot dim">loading /healthz…</div>
-    {:else if healthz.kind === 'error'}
-      <div class="err">healthz fetch failed: {healthz.message}</div>
-    {:else if healthz.kind === 'ready'}
-      <dl class="kv">
-        <dt>version</dt>       <dd class="mono">{healthz.data.version ?? '—'}</dd>
-        <dt>uptime</dt>        <dd class="mono">{fmtUptime(healthz.data.uptime_seconds)}</dd>
-        <dt>data dir</dt>      <dd class="mono">{dataDirLabel}</dd>
-        <dt>appended</dt>      <dd class="mono">{appendedLabel}</dd>
-        <dt>drops total</dt>   <dd class="mono">{dropsTotalLabel}</dd>
-        <dt>last poll</dt>     <dd class="mono">{lastPollLabel}</dd>
-      </dl>
-    {:else}
-      <div class="foot dim">—</div>
-    {/if}
+    <header class="card-head">
+      <h3>{t('settings.auth')}</h3>
+      <p class="sub">{t('settings.changeTokenNote')}</p>
+    </header>
+
+    <div class="rows">
+      <div class="row">
+        <div class="label-col">
+          <span class="label">{t('settings.adminToken')}</span>
+        </div>
+        <div class="control-col token-control">
+          <span class="mono token-mask">{maskedToken}</span>
+          <button type="button" class="btn" onclick={openAuthModal}>{t('settings.changeTokenButton')}</button>
+          {#if tokenSnapshot}
+            <button type="button" class="btn" onclick={clearToken}>{t('filters.clear')}</button>
+          {/if}
+        </div>
+      </div>
+    </div>
   </section>
 
-  <!-- ABOUT -->
+  <!-- 4. ABOUT -->
   <section class="card">
-    <h3>about</h3>
-    <dl class="kv">
-      <dt>what</dt>
-      <dd>api-log-viewer — a Svelte 5 client for the api-log recorder</dd>
-      <dt>upstream</dt>
-      <dd>
-        <a
-          href="http://gitea.homelab.lan/leoyun/api-log-viewer"
-          target="_blank"
-          rel="noopener noreferrer"
-        >gitea.homelab.lan/leoyun/api-log-viewer</a>
-      </dd>
-    </dl>
+    <header class="card-head">
+      <h3>{t('settings.about')}</h3>
+      <p class="sub">{t('settings.aboutWhat')}</p>
+    </header>
+
+    <div class="rows">
+      <div class="row">
+        <div class="label-col">
+          <span class="label">{t('settings.version')}</span>
+        </div>
+        <div class="control-col">
+          <span class="mono">{VIEWER_VERSION}</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label-col">
+          <span class="label">{t('settings.backend')}</span>
+        </div>
+        <div class="control-col">
+          <a class="mono link" href={HEALTHZ_URL} target="_blank" rel="noopener noreferrer">{HEALTHZ_URL}</a>
+        </div>
+      </div>
+
+      <div class="row last">
+        <div class="label-col">
+          <span class="label">{t('settings.aboutUpstreamLabel')}</span>
+        </div>
+        <div class="control-col">
+          <a class="mono link" href={UPSTREAM_URL} target="_blank" rel="noopener noreferrer">{UPSTREAM_URL}</a>
+        </div>
+      </div>
+    </div>
   </section>
 </div>
 
 <style>
-  /* Phase 2 C density pass — Phase L canonical tokens.
-     Card chrome stripped; sections separated by a top hairline. Label
-     left mono (per per-file rule — the dt column reads as data keys).
-     Toggle switches use surface-elevated track + accent on-indicator
-     via appearance:none restyle of the native checkbox. */
+  /* Phase R7 Settings revamp — Vercel-leaning chrome on top of Phase L
+     tokens. Each section is a bordered card (no shadow), --radius-lg =
+     8px, --space-6 padding. Title 14px sans 600; subtitle 12px sans
+     muted. Rows are a grid with hairline-separated borders. Toggle is
+     a custom button with role="switch" — accent reserved per R7 (active
+     state / selected row / focus ring ONLY), so the toggle on-state
+     uses var(--fg) for high contrast, never --accent. */
 
   .settings {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-section);  /* 32px between major cards */
     padding: 0;
   }
 
-  /* Strip card chrome — top hairline + uppercase section label only. */
+  /* ---------- card chrome ---------- */
   .card {
-    border: 0;
-    border-top: 1px solid var(--border);
-    background: transparent;
-    padding-top: var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
   }
-  .card h3 {
-    margin: 0 0 var(--space-3);
+  .card-head {
+    margin: 0 0 var(--space-4);
+  }
+  .card-head h3 {
+    margin: 0;
     padding: 0;
     font-family: var(--font-sans);
-    font-size: var(--size-label);
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--fg-muted);
+    color: var(--fg);
     background: transparent;
     border: 0;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.4;
+  }
+  .card-head .sub {
+    margin: 4px 0 0;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.5;
   }
 
-  .kv {
-    margin: 0;
-    display: grid;
-    grid-template-columns: 180px 1fr;
-    column-gap: var(--space-3);
-    row-gap: 0;
-    font-size: var(--size-input);
-  }
-  .kv dt {
-    padding: 6px 0;
-    color: var(--fg-muted);
-    border-bottom: 1px solid var(--border);
-    background: transparent;
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
+  /* ---------- rows ---------- */
+  .rows {
     display: flex;
+    flex-direction: column;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
     align-items: center;
   }
-  .kv dd {
-    margin: 0;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--border);
-    color: var(--fg);
-    font-size: var(--size-input);
-    overflow-wrap: anywhere;
+  .row.last,
+  .row:last-child {
+    border-bottom: 0;
   }
-  .kv dt:last-of-type,
-  .kv dd:last-of-type { border-bottom: 0; }
 
-  .row {
+  .label-col {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .label {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.4;
+  }
+  .helper {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.5;
+  }
+
+  .control-col {
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .path-control {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .path-control input {
+    width: 220px;
+  }
+  .token-control {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .token-mask {
+    color: var(--fg-muted);
+    font-size: 13px;
   }
 
-  /* Inputs match FilterSidebar. */
-  .kv input[type="text"],
-  .kv select {
+  /* ---------- form controls ---------- */
+  .control-col input[type="text"],
+  .control-col select {
     background: var(--bg);
     color: var(--fg);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: 6px 8px;
     font-family: var(--font-mono);
-    font-size: var(--size-input);
+    font-size: 13px;
     line-height: 1.4;
     outline: none;
     box-shadow: none;
+    transition: border-color 150ms ease;
   }
-  .kv input[type="text"]:focus,
-  .kv select:focus {
+  .control-col input[type="text"]:focus,
+  .control-col select:focus {
     border-color: var(--accent);
   }
-  .row input[type="text"] {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
 
-  /* Outline buttons match FilterSidebar Apply. */
-  .kv button {
+  /* Outline buttons — same shape as FilterSidebar Apply. */
+  .btn {
     background: transparent;
     color: var(--fg-muted);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     padding: 6px 12px;
     font-family: var(--font-sans);
-    font-size: var(--size-body);
+    font-size: 13px;
     cursor: pointer;
     box-shadow: none;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
   }
-  .kv button:hover {
+  .btn:hover {
+    background: var(--surface-elevated);
     color: var(--fg);
     border-color: var(--fg);
   }
 
-  /* Toggle switch — restyle native checkbox via appearance:none.
-     28px wide track, surface-elevated bg, hairline border, accent
-     dot indicator when checked. No drop shadow. */
-  .kv input[type="checkbox"] {
+  /* ---------- toggle switch ----------
+     36 x 20 track, round knob. Off → surface-elevated track + bg knob.
+     On → var(--fg) track + var(--bg) knob (high contrast, NOT accent).
+     150ms transition matches the rest of the page. */
+  .switch {
     appearance: none;
     -webkit-appearance: none;
-    width: 28px;
-    height: 16px;
-    border-radius: var(--radius-md);
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
     background: var(--surface-elevated);
     border: 1px solid var(--border);
     position: relative;
     cursor: pointer;
+    padding: 0;
     margin: 0;
     flex: none;
+    transition: background-color 150ms ease, border-color 150ms ease;
+    display: inline-block;
   }
-  .kv input[type="checkbox"]::after {
-    content: "";
+  .switch .knob {
     position: absolute;
     top: 50%;
-    left: 3px;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    border-radius: var(--radius-sm);
-    background: var(--border-strong);
-    transition: left 120ms ease-out, background 120ms ease-out;
+    left: 1px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bg);
+    transform: translate(0, -50%);
+    transition: transform 150ms ease, background-color 150ms ease;
+    pointer-events: none;
   }
-  .kv input[type="checkbox"]:checked::after {
-    left: 15px;
-    background: var(--accent);
+  .switch.on {
+    background: var(--fg);
+    border-color: var(--fg);
   }
-  .kv input[type="checkbox"]:focus {
+  .switch.on .knob {
+    transform: translate(16px, -50%);
+    background: var(--bg);
+  }
+  .switch:focus-visible {
     outline: none;
     border-color: var(--accent);
-  }
-  .kv input[type="checkbox"]:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    box-shadow: 0 0 0 2px var(--accent);
   }
 
-  .note {
-    margin-top: var(--space-1);
-    font-size: var(--size-meta);
-    color: var(--fg-dim);
-    line-height: 1.5;
-  }
-  .note code {
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
+  /* ---------- atoms ---------- */
+  .mono { font-family: var(--font-mono); font-size: 12px; }
+  .dim { color: var(--fg-dim); font-family: var(--font-sans); font-size: 12px; }
+  .source { margin-left: 4px; }
+
+  .link {
     color: var(--fg-muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: color 150ms ease, border-color 150ms ease;
+    word-break: break-all;
+  }
+  .link:hover {
+    color: var(--fg);
+    border-bottom-color: var(--fg-muted);
   }
 
-  /* Tiny "saved" hint — fades in/out on persist. */
   .hint {
-    font-size: var(--size-meta);
+    font-family: var(--font-sans);
+    font-size: 12px;
     color: var(--accent);
     opacity: 0;
     transition: opacity 160ms ease-out;
@@ -622,8 +689,4 @@
   .hint.show {
     opacity: 1;
   }
-
-  .dim { color: var(--fg-dim); }
-  .err { padding: var(--space-2) 0; color: var(--err); font-size: var(--size-body); }
-  .foot { padding: var(--space-2) 0; font-size: var(--size-meta); line-height: 1.4; }
 </style>
