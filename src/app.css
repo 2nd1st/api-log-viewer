@@ -55,10 +55,10 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --size-label: 10px;             /* uppercase section labels */
-  --size-meta: 11px;              /* mono cells */
-  --size-body: 12px;              /* default UI */
-  --size-input: 13px;
+  --size-label: 11px;             /* uppercase section labels (R2 +1px) */
+  --size-meta: 12px;              /* mono cells (R2 +1px) */
+  --size-body: 13px;              /* default UI (R2 +1px) */
+  --size-input: 14px;             /* form inputs (R2 +1px) */
   --size-display: 24px;           /* Phase 1: NEW — headline metric numbers */
   --size-display-lg: 30px;        /* Phase 1: NEW — primary callout numbers */
   --font-weight-display: 600;     /* Phase 1: NEW — semibold for display numbers */

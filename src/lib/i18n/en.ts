@@ -193,6 +193,98 @@ export const en: Record<string, string> = {
   'settings.relativeHourAgo': '{n}h ago',
   'settings.relativeDayAgo': '{n}d ago',
 
+  // ---------- settings · plugins section ----------
+  // Settings page section that lists runtime plugin overrides. v1 has
+  // no hot-reload, so the section banner explicitly tells operators
+  // their edits won't take effect until backend restart.
+  'settings.plugins.sectionTitle': 'Plugins',
+  'settings.plugins.sectionHelper':
+    'Configure operator-opt-in hooks that mutate or intercept requests / responses.',
+  'settings.plugins.addButton': 'Add plugin',
+  'settings.plugins.emptyState': 'No plugins configured.',
+  'settings.plugins.restartBanner':
+    'Changes take effect after the backend restarts (no hot-reload in v1).',
+  'settings.plugins.sourceYaml': 'yaml',
+  'settings.plugins.sourceOverride': 'override',
+  'settings.plugins.deleteAllAction': 'Revert to YAML',
+  'settings.plugins.sourcePillTitle':
+    'Source: yaml = defaults from config file; override = edited via Settings.',
+  'settings.plugins.deleteAllConfirm':
+    'Clear all runtime plugin overrides and revert to YAML defaults?',
+
+  // ---------- plugins (form fields + actions + errors) ----------
+  // Field labels for the hardcoded forms covering text-replace and
+  // text-append. Unknown types fall back to plugins.field.configJson.
+  'plugins.field.id': 'ID',
+  'plugins.field.type': 'Type',
+  'plugins.field.enabled': 'Enabled',
+  'plugins.field.routes': 'Routes',
+  'plugins.field.routesHelper': 'Glob list, comma-separated (e.g. /v1/*)',
+  'plugins.field.up': 'Up (request)',
+  'plugins.field.down': 'Down (response)',
+  'plugins.field.match': 'Match',
+  'plugins.field.replace': 'Replace',
+  'plugins.field.suffix': 'Suffix',
+  'plugins.field.target': 'Target',
+  'plugins.field.probability': 'Probability',
+  'plugins.field.probabilityAlways': 'Always fire',
+  'plugins.field.configJson': 'Config (JSON)',
+
+  // text-append target options — each maps to a recognized injection
+  // point inside the request payload.
+  'plugins.target.lastUserMessage': 'Last user message',
+  'plugins.target.systemPrompt': 'System prompt',
+  'plugins.target.content': 'Content',
+  'plugins.target.reasoning': 'Reasoning',
+
+  'plugins.action.add': 'Add',
+  'plugins.action.edit': 'Edit',
+  'plugins.action.delete': 'Delete',
+  'plugins.action.save': 'Save',
+  'plugins.action.cancel': 'Cancel',
+  'plugins.action.deleteConfirm': 'Delete plugin {id}?',
+  'plugins.action.confirmDelete': 'Delete this plugin?',
+  'plugins.action.confirmRevert':
+    'Revert all runtime plugin overrides to YAML defaults?',
+  'plugins.action.revertToYaml': 'Revert to YAML',
+  'plugins.action.removeRule': 'Remove rule',
+  'plugins.action.addRule': 'Add rule',
+
+  'plugins.field.upRules': 'Up rules (request → upstream)',
+  'plugins.field.downRules': 'Down rules (response → client)',
+  'plugins.field.config': 'Config',
+  'plugins.field.alwaysFire': 'Always fire',
+  'plugins.field.probabilityValue': 'Probability',
+  'plugins.field.rawJson': 'Raw JSON config',
+  'plugins.field.noRules': 'no rules — click "Add rule" below',
+  'plugins.field.idPlaceholder': 'unique short id',
+  'plugins.field.routesPlaceholder': '/v1/*',
+  'plugins.field.suffixPlaceholder': 'text to append',
+
+  'plugins.target.last_user_message': 'Last user message',
+  'plugins.target.system_prompt': 'System prompt',
+
+  'plugins.error.idRequired': 'ID is required',
+  'plugins.error.idDuplicate': 'ID already exists',
+  'plugins.error.typeRequired': 'Type is required',
+  'plugins.error.configInvalid': 'Config JSON is invalid',
+  'plugins.error.invalidJson': 'Invalid JSON',
+  'plugins.error.invalidJsonShape': 'Config must be a JSON object.',
+  'plugins.error.saveFailed': 'Save failed: {message}',
+  'plugins.error.loadFailed': 'Could not load plugins: {message}',
+  'plugins.error.deleteFailed': 'Delete failed',
+  'plugins.error.patchFailed': 'Patch failed',
+  'plugins.error.revertFailed': 'Revert failed',
+
+  'plugins.unknownTypeHelper':
+    'No form schema known for this type. Edit raw JSON config below.',
+
+  // Per-type descriptions — keyed by the literal backend type string.
+  'plugins.types.text-replace.desc':
+    'Literal substring replacement on request/response content.',
+  'plugins.types.text-append.desc':
+    'Append fixed text to request/response content.',
+
   // ---------- auth (AuthModal.svelte) ----------
   'auth.title': 'admin token',
   'auth.body': 'Bearer from $APILOG_DATA_DIR/admin_token. Stored in localStorage on this device only; sent on every /api/* and /healthz request from this tab.',

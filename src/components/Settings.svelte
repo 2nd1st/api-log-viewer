@@ -39,6 +39,7 @@
   import { DEFAULT_PATH_KEY, api, getToken, setToken } from '../lib/api';
   import { getTheme, setTheme, type Theme } from '../lib/theme';
   import { getLang, setLang, t } from '../lib/i18n.svelte';
+  import PluginList from './plugins/PluginList.svelte';
 
   interface Props {
     authFetch: (path: string, opts?: RequestInit) => Promise<Response>;
@@ -421,6 +422,13 @@
       </div>
     </div>
   </section>
+
+  <!-- 3.5 PLUGINS — operator-config territory adjacent to Auth.
+       PluginList self-wraps in its own .card with matching title/helper
+       (settings.plugins.sectionTitle / sectionHelper) and is a direct
+       flex child of .page-container--narrow so the 32px section gap
+       applies automatically. -->
+  <PluginList {authFetch} />
 
   <!-- 4. ABOUT -->
   <section class="card">

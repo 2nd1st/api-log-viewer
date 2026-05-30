@@ -184,6 +184,91 @@ export const zh: Record<string, string> = {
   'settings.relativeHourAgo': '{n} 小时前',
   'settings.relativeDayAgo': '{n} 天前',
 
+  // ---------- settings · plugins ----------
+  // 设置页里列运行时插件覆盖的板块。v1 不支持热重载，因此 banner 明确
+  // 告知操作者改动要等后端重启才会生效。
+  'settings.plugins.sectionTitle': '插件',
+  'settings.plugins.sectionHelper':
+    '配置由操作者主动开启的钩子，可改写或拦截请求 / 响应。',
+  'settings.plugins.addButton': '新增插件',
+  'settings.plugins.emptyState': '尚未配置插件。',
+  'settings.plugins.restartBanner': '改动需后端重启后生效（v1 不支持热重载）。',
+  'settings.plugins.sourceYaml': 'yaml',
+  'settings.plugins.sourceOverride': 'override',
+  'settings.plugins.deleteAllAction': '恢复 YAML',
+  'settings.plugins.sourcePillTitle':
+    '来源：yaml = 配置文件默认值；override = 通过 Settings 编辑过。',
+  'settings.plugins.deleteAllConfirm':
+    '清空所有运行时插件覆盖，恢复 YAML 默认配置？',
+
+  // ---------- plugins ----------
+  // 字段标签对应 text-replace 与 text-append 的硬编码表单。未知类型
+  // 回退到 plugins.field.configJson 的原始 JSON 编辑。
+  'plugins.field.id': 'ID',
+  'plugins.field.type': '类型',
+  'plugins.field.enabled': '启用',
+  'plugins.field.routes': '路由',
+  'plugins.field.routesHelper': 'glob 列表，逗号分隔（例如 /v1/*）',
+  'plugins.field.up': '上行（请求）',
+  'plugins.field.down': '下行（响应）',
+  'plugins.field.match': '匹配',
+  'plugins.field.replace': '替换',
+  'plugins.field.suffix': '追加内容',
+  'plugins.field.target': '目标',
+  'plugins.field.probability': '触发概率',
+  'plugins.field.probabilityAlways': '总是触发',
+  'plugins.field.configJson': '配置（JSON）',
+
+  // text-append 目标选项 —— 对应请求载荷中可识别的注入点。
+  'plugins.target.lastUserMessage': '最后一条用户消息',
+  'plugins.target.systemPrompt': 'System prompt',
+  'plugins.target.content': '内容',
+  'plugins.target.reasoning': '推理',
+
+  'plugins.action.add': '新增',
+  'plugins.action.edit': '编辑',
+  'plugins.action.delete': '删除',
+  'plugins.action.save': '保存',
+  'plugins.action.cancel': '取消',
+  'plugins.action.deleteConfirm': '删除插件 {id}？',
+  'plugins.action.confirmDelete': '确认删除该插件？',
+  'plugins.action.confirmRevert': '清空所有 runtime 插件覆盖并恢复为 YAML 默认？',
+  'plugins.action.revertToYaml': '恢复为 YAML',
+  'plugins.action.removeRule': '删除规则',
+  'plugins.action.addRule': '新增规则',
+
+  'plugins.field.upRules': 'Up 规则（请求 → 上游）',
+  'plugins.field.downRules': 'Down 规则（响应 → 客户端）',
+  'plugins.field.config': '配置',
+  'plugins.field.alwaysFire': '总是触发',
+  'plugins.field.probabilityValue': '触发概率',
+  'plugins.field.rawJson': '原始 JSON 配置',
+  'plugins.field.noRules': '暂无规则 — 点击下方 “新增规则”',
+  'plugins.field.idPlaceholder': '唯一短 ID',
+  'plugins.field.routesPlaceholder': '/v1/*',
+  'plugins.field.suffixPlaceholder': '要追加的文本',
+
+  'plugins.target.last_user_message': '最近一条用户消息',
+  'plugins.target.system_prompt': 'System prompt',
+
+  'plugins.error.idRequired': 'ID 不能为空',
+  'plugins.error.idDuplicate': 'ID 已存在',
+  'plugins.error.typeRequired': '类型不能为空',
+  'plugins.error.configInvalid': '配置 JSON 无效',
+  'plugins.error.invalidJson': 'JSON 无效',
+  'plugins.error.invalidJsonShape': '配置必须是 JSON 对象。',
+  'plugins.error.saveFailed': '保存失败：{message}',
+  'plugins.error.loadFailed': '插件加载失败：{message}',
+  'plugins.error.deleteFailed': '删除失败',
+  'plugins.error.patchFailed': '更新失败',
+  'plugins.error.revertFailed': '恢复失败',
+
+  'plugins.unknownTypeHelper': '该类型暂无表单 schema，请在下方直接编辑原始 JSON。',
+
+  // 各类型描述 —— 键以后端 type 字符串字面量为准。
+  'plugins.types.text-replace.desc': '对请求 / 响应内容做字面子串替换。',
+  'plugins.types.text-append.desc': '在请求 / 响应内容末尾追加固定文本。',
+
   // ---------- auth ----------
   'auth.title': '管理员 Token',
   'auth.body': '来自 $APILOG_DATA_DIR/admin_token 的 Bearer。仅保存到本设备的 localStorage，本标签页发出的 /api/* 与 /healthz 请求会自动带上。',
