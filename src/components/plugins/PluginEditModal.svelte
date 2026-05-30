@@ -33,11 +33,34 @@
   import {
     replaceAll,
     patchInstance,
+    PluginAPIError,
     type PluginType,
     type PluginInstance,
     type AuthFetch,
   } from '../../lib/plugins';
   import { t } from '../../lib/i18n.svelte';
+
+  // formatPluginError mirrors the helper in PluginList.svelte. Kept
+  // local because the modal mounts/unmounts per open and pulling a
+  // shared module just for this one helper would add a `lib/` file
+  // that exists only to dedupe ~15 lines. If a third caller appears,
+  // hoist it then.
+  function formatPluginError(e: unknown, fallbackKey: string): string {
+    if (e instanceof PluginAPIError) {
+      const codeKey = `plugins.error.${e.error}`;
+      const detail = e.detail || e.message;
+      const codeMsg = t(codeKey, { detail });
+      if (codeMsg === codeKey) {
+        return t('plugins.error.unknown', { detail: `${e.error}${detail ? ': ' + detail : ''}` });
+      }
+      return codeMsg;
+    }
+    const msg = (e as { message?: string })?.message;
+    // Fallback templates may contain {message}/{detail} placeholders
+    // (e.g. plugins.error.saveFailed). Pass empties so they render
+    // clean rather than leaking literal '{message}' to the operator.
+    return msg || t(fallbackKey, { message: '', detail: '' });
+  }
 
   interface Props {
     instance: PluginInstance | null;
@@ -311,7 +334,7 @@
         if (!res.ok) {
           const msg = res.errors && res.errors.length > 0
             ? res.errors.join(', ')
-            : t('plugins.error.saveFailed');
+            : t('plugins.error.saveFailed', { message: '' });
           throw new Error(msg);
         }
         // replaceAll returns the full list; find our newly-added row
@@ -321,8 +344,11 @@
         const added = res.instances?.find((i) => i.id === next.id) ?? next;
         onSaved(added);
       }
-    } catch (e: any) {
-      error = e?.message ?? String(e);
+    } catch (e: unknown) {
+      error = formatPluginError(
+        e,
+        isEdit ? 'plugins.error.patchFailed' : 'plugins.error.saveFailed',
+      );
     } finally {
       saving = false;
     }

@@ -261,6 +261,19 @@ export const zh: Record<string, string> = {
   'plugins.error.deleteFailed': '删除失败',
   'plugins.error.patchFailed': '更新失败',
   'plugins.error.revertFailed': '恢复失败',
+  // 后端 error envelope（internal/api/plugins.go）。键名与后端
+  // `error` 字段保持一致，便于 viewer 把 PluginAPIError 直接映射到
+  // 词条；`{detail}` 是后端返回的人类可读补充信息。
+  'plugins.error.reload_failed': '插件热重载失败，已回滚到上一次配置。{detail}',
+  'plugins.error.bad_instance': '插件实例无效。{detail}',
+  'plugins.error.bad_body': '请求体无效。{detail}',
+  'plugins.error.duplicate_id': '插件 id 重复。{detail}',
+  'plugins.error.missing_field': '缺少必填字段。{detail}',
+  'plugins.error.missing_param': '缺少必填路径参数。{detail}',
+  'plugins.error.not_found': '未找到对应的插件。{detail}',
+  'plugins.error.override_read_failed': '读取 runtime override 文件失败。{detail}',
+  'plugins.error.override_write_failed': '写入 runtime override 文件失败。{detail}',
+  'plugins.error.unknown': '插件 API 错误：{detail}',
 
   'plugins.unknownTypeHelper': '该类型暂无表单 schema，请在下方直接编辑原始 JSON。',
 

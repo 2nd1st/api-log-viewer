@@ -273,6 +273,20 @@ export const en: Record<string, string> = {
   'plugins.error.deleteFailed': 'Delete failed',
   'plugins.error.patchFailed': 'Patch failed',
   'plugins.error.revertFailed': 'Revert failed',
+  // Backend error envelope codes (internal/api/plugins.go). Keys match
+  // the backend `error` string verbatim so the viewer can map a
+  // PluginAPIError directly to a dictionary entry; `{detail}` is the
+  // backend's human-readable message.
+  'plugins.error.reload_failed': 'Plugin reload failed; the previous configuration was restored. {detail}',
+  'plugins.error.bad_instance': 'Plugin instance is invalid. {detail}',
+  'plugins.error.bad_body': 'Request body is invalid. {detail}',
+  'plugins.error.duplicate_id': 'Plugin id is duplicated. {detail}',
+  'plugins.error.missing_field': 'Required field missing. {detail}',
+  'plugins.error.missing_param': 'Required path parameter missing. {detail}',
+  'plugins.error.not_found': 'Plugin not found. {detail}',
+  'plugins.error.override_read_failed': 'Could not read runtime override file. {detail}',
+  'plugins.error.override_write_failed': 'Could not write runtime override file. {detail}',
+  'plugins.error.unknown': 'Plugin API error: {detail}',
 
   'plugins.unknownTypeHelper':
     'No form schema known for this type. Edit raw JSON config below.',

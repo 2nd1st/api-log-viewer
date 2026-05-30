@@ -37,12 +37,38 @@
     replaceAll,
     patchInstance,
     deleteAll,
+    PluginAPIError,
     type PluginType,
     type PluginInstance,
     type AuthFetch,
   } from '../../lib/plugins';
   import { t } from '../../lib/i18n.svelte';
   import PluginEditModal from './PluginEditModal.svelte';
+
+  // formatPluginError turns whatever bubbled out of the plugin client
+  // into a string the operator can read. PluginAPIError gets routed to
+  // the backend-coded i18n key (`plugins.error.<error>`) with the
+  // `detail` interpolated; unknown backend codes fall through to the
+  // generic `plugins.error.unknown` template. Anything else (network,
+  // unauthorized) keeps its native message — those already read well.
+  function formatPluginError(e: unknown, fallbackKey: string): string {
+    if (e instanceof PluginAPIError) {
+      const codeKey = `plugins.error.${e.error}`;
+      const detail = e.detail || e.message;
+      const codeMsg = t(codeKey, { detail });
+      // i18n.t() returns the raw key on miss — fall back to the
+      // unknown template so the operator still sees the detail.
+      if (codeMsg === codeKey) {
+        return t('plugins.error.unknown', { detail: `${e.error}${detail ? ': ' + detail : ''}` });
+      }
+      return codeMsg;
+    }
+    const msg = (e as { message?: string })?.message;
+    // Fallback templates may contain {message}/{detail} placeholders
+    // (e.g. plugins.error.saveFailed). Pass empties so they render
+    // clean rather than leaking literal '{message}' to the operator.
+    return msg || t(fallbackKey, { message: '', detail: '' });
+  }
 
   interface Props {
     authFetch: AuthFetch;
@@ -83,8 +109,8 @@
       types = tRes;
       instances = iRes.instances;
       source = iRes.source;
-    } catch (e: any) {
-      error = e?.message ?? String(e);
+    } catch (e: unknown) {
+      error = formatPluginError(e, 'plugins.error.unknown');
     } finally {
       loading = false;
     }
@@ -117,10 +143,10 @@
       // PATCH responses don't carry source — assume any mutation flips
       // us into override mode if we weren't already there.
       if (source === 'yaml') source = 'override';
-    } catch (e: any) {
+    } catch (e: unknown) {
       instances = prevInstances;
       source = prevSource;
-      error = e?.message ?? String(e);
+      error = formatPluginError(e, 'plugins.error.patchFailed');
     }
   }
 
@@ -142,8 +168,8 @@
       }
       instances = res.instances;
       source = 'override';
-    } catch (e: any) {
-      error = e?.message ?? String(e);
+    } catch (e: unknown) {
+      error = formatPluginError(e, 'plugins.error.deleteFailed');
     }
   }
 
@@ -155,8 +181,8 @@
       if (!res.ok) throw new Error(t('plugins.error.revertFailed'));
       // Re-fetch — DELETE returns ok+source but not the instance list.
       await loadAll();
-    } catch (e: any) {
-      error = e?.message ?? String(e);
+    } catch (e: unknown) {
+      error = formatPluginError(e, 'plugins.error.revertFailed');
     }
   }
 

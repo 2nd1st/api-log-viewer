@@ -37,7 +37,7 @@ These are not vulnerabilities; they are deliberate design choices or
 backend concerns:
 
 - **Captured bearer tokens visible in the viewer.** api-log records
-  upstream traffic verbatim (see backend [PHILOSOPHY.md](https://github.com/leoyun/api-log)
+  upstream traffic verbatim (see backend [PHILOSOPHY.md](https://github.com/xiayangzhang/api-log)
   no-list). The viewer renders what was captured. Operators who do
   not want tokens visible should not capture them — that is a backend
   / pipeline decision, not a viewer concern.

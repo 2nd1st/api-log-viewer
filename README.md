@@ -6,6 +6,22 @@ for LLM gateway traffic.
 Two-repo layout per CLIProxyAPI's separation philosophy: the backend
 exposes pure HTTP API; this repo is one of (potentially many) frontends.
 
+## Status
+
+Pre-release. Expects api-log backend `>= 0.1.0`; the wire contract is
+stable but commit history may still rebase before the v0.1.0 tag.
+
+(screenshots coming with the v0.1.0 tag)
+
+## Project docs
+
+- [PHILOSOPHY.md](./PHILOSOPHY.md) — restraint discipline and the
+  small-core / many-plugins position.
+- [SECURITY.md](./SECURITY.md) — threat model, bearer-token handling,
+  and what the capture path does and does not redact.
+- [api-log backend](https://github.com/xiayangzhang/api-log) — the Go
+  recording proxy this viewer reads from.
+
 ## Stack
 
 - Svelte 5 (runes) + Vite + TypeScript
