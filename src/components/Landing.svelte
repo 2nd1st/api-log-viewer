@@ -1,28 +1,31 @@
 <script lang="ts">
-  // Landing — default home view (#/, #/dashboard).
+  // Landing — default home view (#/, #/landing, #/dashboard alias).
   //
   // Operator-triage layout, not analytics. Sections in render order:
   //
-  //   STATUS strip       — single row: live/stalled dot, last poll,
-  //                        data dir bytes, uptime, this-week trace count
-  //   CAPABILITY strip   — protocol chips (chat · messages · responses ·
-  //                        gemini); lit when at least one trace in the
-  //                        last hour used that protocol
-  //   NEEDS ATTENTION    — last 10 traces in the last 30 min where
-  //                        status≥400 OR dur>30s OR truncated.
-  //                        Empty state is rendered (not hidden) — the
-  //                        section's value to an operator is partly the
-  //                        confirmation "yes I checked, nothing is on fire"
-  //   VOLUME             — traces/minute sparkline over the last 60 min,
-  //                        bucketed from row.ts_start; SVG bars, no chart lib
-  //   INTERNAL · healthz — collapsible. Auto-expanded on the transition
-  //                        into a warn/err state (operator can still close
-  //                        manually thereafter)
+  //   STATUS             — six metric cells: PROXY :7861, API :7862,
+  //                        UPTIME, TRACES (healthz.appended), DATA bytes,
+  //                        LAST WRITE (newest row age from sample)
+  //   CAPABILITY         — protocol chips lit/dim; lit when at least
+  //                        one trace in the last hour used that protocol.
+  //                        Lit = bright --fg, dim = --fg-dim. No accent
+  //                        on status/presence signals.
+  //   NEEDS ATTENTION    — rows in the last 30 min where
+  //                        status≥400 OR dur>30s OR truncated
+  //   ACTIVE CLIENTS     — top 5 client_kind groups from the 200-row
+  //                        sample: kind | version (most recent) | count
+  //   TOKEN USAGE        — sums over the 200-row sample: PROMPT,
+  //                        COMPLETION, CACHE READ (with hit-rate),
+  //                        CACHE CREATION
+  //   VOLUME             — traces/min bar sparkline over last 60 min
+  //                        from the same sample. --accent fills bars.
+  //   INTERNAL · healthz — collapsible (default closed). Caret takes
+  //                        --accent only when open. Auto-opens on the
+  //                        rising edge of drops/dial-err/etc.
   //
-  // Polling: /api/traces?limit=200 + /healthz every 10s for the row table
-  // and counters; this-week count fetched at most once every 60s (cap 5
-  // pages × limit=500); a 1s now-ticker drives the relative-time labels
-  // and the stalled-pulse check so the UI doesn't freeze between polls.
+  // Fetch shape: /api/traces?limit=200 + /healthz every 10s. The slow
+  // ?since=monday week-count is gone — Phase L explicitly drops it.
+  // A 1s now-ticker drives relative-time labels independently of polls.
 
   import { detectProtocol, type Protocol } from '../lib/adapters';
   import { humanBytes, fmtMs, statusClass } from '../lib/format';
@@ -37,7 +40,13 @@
     path?: string | null;
     model?: string | null;
     client?: string | null;
+    client_kind?: string | null;
+    client_version?: string | null;
     key_hash?: string | null;
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    cached_tokens?: number | null;
+    cache_creation_tokens?: number | null;
     truncated_req?: boolean;
     truncated_resp?: boolean;
     [k: string]: unknown;
@@ -50,10 +59,6 @@
   const { authFetch }: Props = $props();
 
   // ---------- now ticker (1s) ----------
-  //
-  // A dedicated ticker independent of the data poll. Without it, every
-  // relative-time label ("33s ago", "● stalled if no poll in 30s") freezes
-  // between polls — looks fine in a screenshot, broken in practice.
 
   let now = $state(Date.now());
 
@@ -130,106 +135,60 @@
     }
   }
 
-  // ---------- this-week count (60s cache, capped pagination) ----------
-
-  const WEEK_CACHE_MS = 60_000;
-  const WEEK_MAX_PAGES = 5;
-  const WEEK_PAGE_LIMIT = 500;
-
-  let weekCount = $state<number | null>(null);
-  let weekCappedAtFloor = $state(false);
-  let weekFetchedAt = 0;
-  let weekFetchInFlight = false;
-
-  async function loadWeekCount() {
-    if (weekFetchInFlight) return;
-    if (Date.now() - weekFetchedAt < WEEK_CACHE_MS) return;
-    weekFetchInFlight = true;
-    try {
-      const sinceDate = new Date(Date.now() - 7 * 86_400_000);
-      const sinceIso =
-        sinceDate.toISOString().slice(0, 10) + 'T00:00:00Z';
-      let total = 0;
-      let cursor: string | null = null;
-      let pages = 0;
-      let cappedAtFloor = false;
-      // Paginate until exhausted or cap. Break on empty page too,
-      // belt-and-suspenders against an API that ever returns
-      // next_cursor=non-null + traces=[].
-      while (pages < WEEK_MAX_PAGES) {
-        const qs = new URLSearchParams();
-        qs.set('since', sinceIso);
-        qs.set('limit', String(WEEK_PAGE_LIMIT));
-        if (cursor) qs.set('cursor', cursor);
-        const r = await authFetch('api/traces?' + qs.toString());
-        if (!r.ok) throw new Error(String(r.status));
-        const j = await r.json();
-        const page: unknown[] = j.traces || [];
-        total += page.length;
-        pages++;
-        cursor = j.next_cursor || null;
-        if (!cursor || page.length === 0) break;
-        if (pages >= WEEK_MAX_PAGES && cursor) {
-          cappedAtFloor = true;
-        }
-      }
-      weekCount = total;
-      weekCappedAtFloor = cappedAtFloor;
-      weekFetchedAt = Date.now();
-    } catch {
-      // swallow — keep previous weekCount; "?" surfaces only on cold start
-    } finally {
-      weekFetchInFlight = false;
-    }
-  }
-
   // ---------- 10s polling ----------
 
   $effect(() => {
     loadList();
     loadHealthz();
-    loadWeekCount();
     const t = setInterval(() => {
       loadList();
       loadHealthz();
-      loadWeekCount(); // no-op until cache age > 60s
     }, 10_000);
     return () => clearInterval(t);
   });
 
-  // ---------- STATUS strip derivations ----------
+  // ---------- STATUS derivations ----------
 
   const stalled = $derived(
     lastPollAt > 0 && now - lastPollAt > 30_000,
   );
 
-  const lastPollLabel = $derived.by(() => {
-    if (lastPollAt === 0) return '—';
-    const ageSec = Math.max(0, Math.floor((now - lastPollAt) / 1000));
-    if (ageSec < 60) return `${ageSec}s ago`;
-    if (ageSec < 3600) return `${Math.floor(ageSec / 60)}m ago`;
-    return `${Math.floor(ageSec / 3600)}h ago`;
-  });
-
-  const dataDirLabel = $derived.by(() => {
-    const b = healthz?.counters?.total_bytes;
-    if (b == null) return '?';
-    return humanBytes(b);
-  });
-
   const uptimeLabel = $derived.by(() => {
     const s = healthz?.uptime_seconds;
-    if (s == null) return '?';
+    if (s == null) return '—';
     if (s < 60) return `${Math.floor(s)}s`;
     if (s < 3600) return `${Math.floor(s / 60)}m`;
     if (s < 86_400) return `${Math.floor(s / 3600)}h`;
     return `${Math.floor(s / 86_400)}d`;
   });
 
-  const weekLabel = $derived.by(() => {
-    if (weekCount == null) return '?';
-    if (weekCappedAtFloor) return `${weekCount}+`;
-    return String(weekCount);
+  const dataDirLabel = $derived.by(() => {
+    const b = healthz?.counters?.total_bytes;
+    if (b == null) return '—';
+    return humanBytes(b);
+  });
+
+  const tracesTotalLabel = $derived.by(() => {
+    const n = healthz?.counters?.appended;
+    if (n == null) return '—';
+    return n.toLocaleString();
+  });
+
+  // Newest ts_start in the sample → relative-age label. Falls back to
+  // last poll time on cold start so the cell isn't blank.
+  const lastWriteLabel = $derived.by(() => {
+    let newest = 0;
+    for (const r of rows) {
+      if (!r.ts_start) continue;
+      const t = new Date(r.ts_start).getTime();
+      if (Number.isFinite(t) && t > newest) newest = t;
+    }
+    if (newest === 0) return '—';
+    const ageSec = Math.max(0, Math.floor((now - newest) / 1000));
+    if (ageSec < 60) return `${ageSec}s ago`;
+    if (ageSec < 3600) return `${Math.floor(ageSec / 60)}m ago`;
+    if (ageSec < 86_400) return `${Math.floor(ageSec / 3600)}h ago`;
+    return `${Math.floor(ageSec / 86_400)}d ago`;
   });
 
   // ---------- CAPABILITY strip ----------
@@ -255,11 +214,9 @@
 
   // ---------- NEEDS ATTENTION ----------
   //
-  // The empty-state copy asserts "last 30 minutes", so we scope incident
-  // detection to that window too — otherwise the line "No incidents in
-  // the last 30 minutes" can be untrue (an older incident sat unmatched
-  // only because newer non-incident rows pushed it out of our 200-row
-  // window).
+  // Last 30 min, status≥400 OR slow (>30s) OR truncated. Empty state is
+  // rendered (not hidden) — "yes I checked, nothing is on fire" is the
+  // load-bearing value for an operator.
 
   const ATTENTION_WINDOW_MS = 30 * 60 * 1000;
   const ATTENTION_LIMIT = 10;
@@ -317,15 +274,78 @@
     return k.slice(0, 8);
   }
 
+  // ---------- ACTIVE CLIENTS ----------
+  //
+  // Group the 200-row sample by client_kind. Version comes from the most
+  // recent row in the group (rows arrive newest-first from the API). Top
+  // 5 by count; if fewer kinds present, render what's there.
+
+  const ACTIVE_CLIENTS_LIMIT = 5;
+
+  interface ClientAgg {
+    kind: string;
+    version: string;
+    count: number;
+  }
+
+  const activeClients = $derived.by<ClientAgg[]>(() => {
+    const m = new Map<string, ClientAgg>();
+    for (const r of rows) {
+      const kind = (r.client_kind ?? '').trim() || 'unknown';
+      const existing = m.get(kind);
+      if (existing) {
+        existing.count++;
+      } else {
+        m.set(kind, {
+          kind,
+          // Rows arrive newest→oldest, so the first row we see for a
+          // kind carries the most recent version string.
+          version: (r.client_version ?? '').trim() || '—',
+          count: 1,
+        });
+      }
+    }
+    return Array.from(m.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, ACTIVE_CLIENTS_LIMIT);
+  });
+
+  // ---------- TOKEN USAGE ----------
+  //
+  // Four sums over the 200-row sample. Cache hit-rate = cached_tokens
+  // sum / prompt_tokens sum, rendered alongside the CACHE READ value
+  // in muted mono — no status color (it's a ratio, not a signal).
+
+  const tokenTotals = $derived.by(() => {
+    let prompt = 0;
+    let completion = 0;
+    let cached = 0;
+    let cacheCreate = 0;
+    for (const r of rows) {
+      prompt += Number(r.prompt_tokens ?? 0) || 0;
+      completion += Number(r.completion_tokens ?? 0) || 0;
+      cached += Number(r.cached_tokens ?? 0) || 0;
+      cacheCreate += Number(r.cache_creation_tokens ?? 0) || 0;
+    }
+    const hitRate = prompt > 0 ? cached / prompt : 0;
+    return { prompt, completion, cached, cacheCreate, hitRate };
+  });
+
+  function fmtTokenCount(n: number): string {
+    if (n === 0) return '0';
+    if (n < 1000) return String(n);
+    if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
+    return `${(n / 1_000_000).toFixed(n < 10_000_000 ? 2 : 1)}M`;
+  }
+
   // ---------- VOLUME sparkline ----------
 
   const SPARK_BUCKETS = 60;
   const SPARK_BUCKET_MS = 60_000;
-  const SPARK_HEIGHT = 200;
+  const SPARK_HEIGHT = 64;
   const SPARK_WIDTH = 600; // viewBox; CSS scales to container
 
   const sparkData = $derived.by(() => {
-    // Bucket index 0 = oldest minute (59 min ago), 59 = current minute.
     const buckets = new Array<number>(SPARK_BUCKETS).fill(0);
     const windowMs = SPARK_BUCKETS * SPARK_BUCKET_MS;
     const cutoff = now - windowMs;
@@ -340,7 +360,7 @@
     }
     const max = buckets.reduce((m, v) => Math.max(m, v), 0);
     const barW = SPARK_WIDTH / SPARK_BUCKETS;
-    const innerH = SPARK_HEIGHT - 8; // leave 8px headroom
+    const innerH = SPARK_HEIGHT - 4;
     const bars = buckets.map((count, i) => {
       const h = max === 0 ? 0 : (count / max) * innerH;
       return {
@@ -356,10 +376,6 @@
   });
 
   // ---------- INTERNAL · healthz ----------
-  //
-  // Auto-expand on the transition into warn/err. Using a $state + $effect
-  // (rather than binding open to a $derived) so the operator can still
-  // collapse it manually while a warn persists.
 
   let internalOpen = $state(false);
   let prevHasAlert = false;
@@ -431,7 +447,8 @@
     healthzCards.some((c) => c.kind === 'bad' || c.kind === 'warn'),
   );
 
-  // Transition detector: force-open on rising edge (clean → alert).
+  // Force-open on rising edge (clean → alert) so the operator notices
+  // even with the section collapsed.
   $effect(() => {
     const cur = hasAlert;
     if (cur && !prevHasAlert) internalOpen = true;
@@ -463,48 +480,63 @@
     <div class="err-banner">list fetch failed: {rowsLoadError}</div>
   {/if}
 
-  <!-- ---------- STATUS strip ---------- -->
-  <section class="status">
-    <span class="status-dot" class:stalled aria-hidden="true">●</span>
-    <span class="status-text">
-      {#if stalled}stalled{:else}live · backend OK{/if}
-    </span>
-    <span class="status-sep">·</span>
-    <span class="status-kv"
-      ><span class="k">last poll</span>
-      <span class="v">{lastPollLabel}</span></span
-    >
-    <span class="status-sep">·</span>
-    <span class="status-kv"
-      ><span class="k">data dir</span> <span class="v">{dataDirLabel}</span></span
-    >
-    <span class="status-sep">·</span>
-    <span class="status-kv"
-      ><span class="k">uptime</span> <span class="v">{uptimeLabel}</span></span
-    >
-    <span class="status-sep">·</span>
-    <span class="status-kv"
-      ><span class="k">this week</span> <span class="v">{weekLabel}</span></span
-    >
+  <!-- ---------- STATUS ---------- -->
+  <section class="block status-block">
+    <div class="section-head">
+      <h3 class="group-title">status</h3>
+      <span class="sample-tag" class:stalled>
+        {#if stalled}stalled · last poll &gt; 30s{:else}live · last poll OK{/if}
+      </span>
+    </div>
+    <div class="metric-row">
+      <div class="metric">
+        <div class="m-label">proxy</div>
+        <div class="m-value">:7861</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">api</div>
+        <div class="m-value">:7862</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">uptime</div>
+        <div class="m-value">{uptimeLabel}</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">traces</div>
+        <div class="m-value">{tracesTotalLabel}</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">data</div>
+        <div class="m-value">{dataDirLabel}</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">last write</div>
+        <div class="m-value">{lastWriteLabel}</div>
+      </div>
+    </div>
   </section>
 
-  <!-- ---------- CAPABILITY strip ---------- -->
-  <section class="capability">
-    <span class="cap-label">protocols</span>
-    {#each PROTOCOL_CHIPS as chip (chip.key)}
-      <span
-        class="chip"
-        class:lit={recentProtocolHits.has(chip.key)}
-        title={recentProtocolHits.has(chip.key)
-          ? 'seen in the last hour'
-          : 'no traces in the last hour'}>{chip.label}</span
-      >
-    {/each}
-    <span class="cap-tail">recognized · last hour</span>
+  <!-- ---------- CAPABILITY ---------- -->
+  <section class="block">
+    <div class="section-head">
+      <h3 class="group-title">capability</h3>
+      <span class="sample-tag">recognized · last hour</span>
+    </div>
+    <div class="chip-row">
+      {#each PROTOCOL_CHIPS as chip (chip.key)}
+        <span
+          class="chip"
+          class:lit={recentProtocolHits.has(chip.key)}
+          title={recentProtocolHits.has(chip.key)
+            ? 'seen in the last hour'
+            : 'no traces in the last hour'}>{chip.label}</span
+        >
+      {/each}
+    </div>
   </section>
 
   <!-- ---------- NEEDS ATTENTION ---------- -->
-  <section class="attention">
+  <section class="block">
     <div class="section-head">
       <h3 class="group-title">needs attention</h3>
       <span class="sample-tag">last 30 min · top {ATTENTION_LIMIT}</span>
@@ -547,8 +579,69 @@
     {/if}
   </section>
 
+  <!-- ---------- ACTIVE CLIENTS ---------- -->
+  <section class="block">
+    <div class="section-head">
+      <h3 class="group-title">active clients</h3>
+      <span class="sample-tag">recent 200 requests · top {ACTIVE_CLIENTS_LIMIT}</span>
+    </div>
+    {#if activeClients.length === 0}
+      <div class="empty">No client_kind in the recent 200 requests.</div>
+    {:else}
+      <table class="mono-table clients-table">
+        <thead>
+          <tr>
+            <th class="col-kind">kind</th>
+            <th class="col-version">version</th>
+            <th class="col-count">trace count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each activeClients as c (c.kind)}
+            <tr>
+              <td class="col-kind">{c.kind}</td>
+              <td class="col-version">{c.version}</td>
+              <td class="col-count">{c.count}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </section>
+
+  <!-- ---------- TOKEN USAGE ---------- -->
+  <section class="block">
+    <div class="section-head">
+      <h3 class="group-title">token usage</h3>
+      <span class="sample-tag">recent 200 requests · sums</span>
+    </div>
+    <div class="metric-row">
+      <div class="metric">
+        <div class="m-label">prompt</div>
+        <div class="m-value">{fmtTokenCount(tokenTotals.prompt)}</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">completion</div>
+        <div class="m-value">{fmtTokenCount(tokenTotals.completion)}</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">cache read</div>
+        <div class="m-value">
+          {fmtTokenCount(tokenTotals.cached)}
+          <span class="m-sub"
+            >hit {(tokenTotals.hitRate * 100).toFixed(tokenTotals.hitRate >= 0.1 ? 0 : 1)}%</span
+          >
+        </div>
+      </div>
+      <div class="metric">
+        <div class="m-label">cache creation</div>
+        <div class="m-value">{fmtTokenCount(tokenTotals.cacheCreate)}</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ---------- VOLUME sparkline ---------- -->
-  <section class="volume">
+  <section class="block">
     <div class="section-head">
       <h3 class="group-title">volume</h3>
       <span class="sample-tag"
@@ -585,14 +678,16 @@
   </section>
 
   <!-- ---------- INTERNAL · healthz (collapsible) ---------- -->
-  <section class="internal" class:open={internalOpen}>
+  <section class="block internal" class:open={internalOpen}>
     <button
       type="button"
       class="internal-toggle"
       aria-expanded={internalOpen}
       onclick={() => (internalOpen = !internalOpen)}
     >
-      <span class="caret">{internalOpen ? '▾' : '▸'}</span>
+      <span class="caret" class:active={internalOpen}
+        >{internalOpen ? '▾' : '▸'}</span
+      >
       <span class="group-title">internal · healthz</span>
       {#if hasAlert}
         <span class="alert-tag">attention</span>
@@ -644,129 +739,115 @@
     padding: 20px 24px 32px;
     display: flex;
     flex-direction: column;
-    gap: var(--gap-6);
+    gap: var(--space-6);
     min-height: 0;
   }
 
   .err-banner {
-    padding: var(--gap-2) var(--gap-3);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--err);
-    border-radius: var(--radius);
     color: var(--err);
-    font-family: var(--mono);
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
 
-  /* ---------- STATUS strip ---------- */
-  .status {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--gap-3);
-    padding: var(--gap-3) var(--gap-4);
+  /* ---------- block frame (hairline border, no card chrome) ---------- */
+  .block {
     border: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .status-dot {
-    color: var(--ok);
-    font-size: 10px;
-    line-height: 1;
-    position: relative;
-    top: -1px;
-  }
-  .status-dot.stalled {
-    color: var(--err);
-  }
-  .status-text {
-    color: var(--fg);
-  }
-  .status-sep {
-    color: var(--fg-dim);
-  }
-  .status-kv {
-    display: inline-flex;
-    gap: var(--gap-2);
-    align-items: baseline;
-  }
-  .status-kv .k {
-    color: var(--fg-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 10px;
-  }
-  .status-kv .v {
-    color: var(--fg);
+    background: var(--surface);
+    padding: var(--space-3) var(--space-4);
   }
 
-  /* ---------- CAPABILITY strip ---------- */
-  .capability {
-    display: flex;
-    align-items: baseline;
-    gap: var(--gap-2);
-    padding: var(--gap-2) var(--gap-4);
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
-    font-family: var(--mono);
-    font-size: 11px;
-  }
-  .cap-label {
-    color: var(--fg-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 10px;
-    margin-right: var(--gap-2);
-  }
-  .chip {
-    padding: 2px 8px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg-dim);
-    background: transparent;
-  }
-  .chip.lit {
-    color: var(--accent);
-    border-color: var(--accent-dim);
-  }
-  .cap-tail {
-    margin-left: auto;
-    color: var(--fg-dim);
-    font-size: 10px;
-  }
-
-  /* ---------- section heads ---------- */
   .section-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: var(--gap-3);
+    margin-bottom: var(--space-3);
   }
   .group-title {
-    font-size: 10px;
+    font-size: var(--size-label);
     color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin: 0;
   }
   .sample-tag {
-    font-family: var(--mono);
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
+  }
+  .sample-tag.stalled {
+    color: var(--err);
   }
   .empty {
     color: var(--fg-dim);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: var(--gap-2) 0;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
+    padding: var(--space-2) 0;
+  }
+
+  /* ---------- metric row (STATUS + TOKEN USAGE) ---------- */
+  .metric-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: var(--space-4);
+  }
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .m-label {
+    font-size: var(--size-label);
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .m-value {
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
+    color: var(--fg);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-sub {
+    color: var(--fg-dim);
+    font-size: var(--size-label);
+  }
+
+  /* ---------- CAPABILITY chips ----------
+   *
+   * Per Phase L principle 4, accent must not carry status/presence
+   * semantics. "Lit" here signals "has traffic in the last hour" —
+   * that's a presence signal, not selection — so lit chips read in
+   * bright --fg, dim chips in --fg-dim. Hairline border in both
+   * states; no fills.
+   */
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .chip {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
+  }
+  .chip.lit {
+    color: var(--fg);
+    border-color: var(--border-strong);
   }
 
   /* ---------- NEEDS ATTENTION ---------- */
-  .attention {
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
-    padding: var(--gap-3) var(--gap-4);
-  }
   .incidents {
     list-style: none;
     margin: 0;
@@ -780,23 +861,23 @@
   .incident-row {
     display: grid;
     grid-template-columns: 80px 56px 1fr 160px 64px 80px auto;
-    gap: var(--gap-3);
+    gap: var(--space-3);
     align-items: center;
     width: 100%;
-    padding: var(--gap-2) 0;
+    padding: var(--space-2) 0;
     background: transparent;
     border: none;
     border-left: 2px solid transparent;
     border-radius: 0;
     text-align: left;
     cursor: pointer;
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
     color: var(--fg);
   }
   .incident-row:hover {
-    border-left-color: var(--accent);
-    background: var(--bg-elev-2);
+    border-left-color: var(--border-strong);
+    background: var(--surface-elevated);
   }
   .i-age {
     color: var(--fg-dim);
@@ -835,14 +916,13 @@
   }
   .i-reasons {
     display: inline-flex;
-    gap: var(--gap-1);
+    gap: var(--space-1);
     flex-wrap: nowrap;
   }
   .reason {
     padding: 1px 6px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 10px;
+    font-size: var(--size-label);
     color: var(--fg-muted);
     line-height: 1.4;
   }
@@ -855,53 +935,95 @@
     border-color: var(--err);
   }
 
-  /* ---------- VOLUME ---------- */
-  .volume {
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
-    padding: var(--gap-3) var(--gap-4);
+  /* ---------- ACTIVE CLIENTS table ---------- */
+  .mono-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
+  .mono-table th,
+  .mono-table td {
+    padding: var(--space-2) var(--space-3);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .mono-table thead th {
+    font-size: var(--size-label);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    border-bottom-color: var(--border-strong);
+  }
+  .mono-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .clients-table .col-kind {
+    color: var(--fg);
+  }
+  .clients-table .col-version {
+    color: var(--fg-muted);
+  }
+  .clients-table .col-count {
+    text-align: right;
+    color: var(--fg);
+    width: 100px;
+  }
+  .clients-table th.col-count {
+    text-align: right;
+  }
+
+  /* ---------- VOLUME sparkline ----------
+   *
+   * Bars (preserved from Phase H, per principle 6 "no new sparklines").
+   * --accent fills the bars — this is one of the two places in Landing
+   * where accent is allowed.
+   */
   .spark-wrap {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-2);
+    gap: var(--space-2);
   }
   .spark {
     width: 100%;
-    height: 200px;
+    height: 64px;
     display: block;
   }
   .spark-bar {
     fill: var(--accent);
-    opacity: 0.55;
+    opacity: 0.7;
   }
   .spark-axis {
     display: flex;
     justify-content: space-between;
-    font-family: var(--mono);
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
     color: var(--fg-dim);
   }
 
-  /* ---------- INTERNAL ---------- */
+  /* ---------- INTERNAL ----------
+   *
+   * Caret takes --accent ONLY when the section is open (the second
+   * allowed accent in Landing). Closed caret stays dim.
+   */
   .internal {
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
+    padding: 0;
   }
   .internal-toggle {
     display: flex;
     align-items: baseline;
-    gap: var(--gap-2);
+    gap: var(--space-2);
     width: 100%;
-    padding: var(--gap-2) var(--gap-4);
+    padding: var(--space-2) var(--space-4);
     background: transparent;
     border: none;
     border-radius: 0;
     text-align: left;
     cursor: pointer;
     color: var(--fg-muted);
-    font-family: var(--mono);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
   }
   .internal-toggle:hover {
     color: var(--fg);
@@ -911,26 +1033,28 @@
     width: 12px;
     display: inline-block;
   }
+  .caret.active {
+    color: var(--accent);
+  }
   .alert-tag {
     color: var(--warn);
-    font-size: 10px;
+    font-size: var(--size-label);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
   .err-tag {
     color: var(--err);
-    font-family: var(--mono);
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--size-label);
   }
   .internal-body {
-    padding: 0 var(--gap-4) var(--gap-4);
+    padding: 0 var(--space-4) var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--gap-3);
-    opacity: 0.85;
+    gap: var(--space-3);
   }
   .group-title.sub {
-    margin-top: var(--gap-2);
+    margin-top: var(--space-2);
   }
   .internal-cards {
     display: grid;
@@ -940,26 +1064,25 @@
     border: 1px solid var(--border);
   }
   .hcard {
-    background: var(--bg-elev);
-    padding: var(--gap-2) var(--gap-3);
+    background: var(--surface);
+    padding: var(--space-2) var(--space-3);
   }
   .hcard-label {
     color: var(--fg-muted);
-    font-size: 9px;
+    font-size: var(--size-label);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
   .hcard-value {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 14px;
     margin-top: 3px;
     color: var(--fg);
   }
   .hcard-sub {
     color: var(--fg-dim);
-    font-size: 10px;
-    font-family: var(--mono);
+    font-size: var(--size-label);
+    font-family: var(--font-mono);
     margin-top: 3px;
   }
   .hcard.bad .hcard-value {
@@ -970,7 +1093,6 @@
   }
   .p50-tag {
     color: var(--fg-muted);
-    font-size: 10px;
-    font-weight: 400;
+    font-size: var(--size-label);
   }
 </style>
