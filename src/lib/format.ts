@@ -1,8 +1,7 @@
 // Formatting helpers ported 1:1 from the original
 // internal/viewer/static/index.html (lines ~576–731).
 //
-// These are pure presentation utilities — no state, no side effects
-// beyond the DOM mutation in refreshDatalist.
+// These are pure presentation utilities — no state, no side effects.
 
 /**
  * HTML-escape a value for safe interpolation into innerHTML strings.
@@ -70,33 +69,4 @@ export function statusClass(s: number | null | undefined): string {
   if (!s || s < 100) return 'st-x';
   const b = Math.floor(s / 100);
   return b === 2 ? 'st-2' : b === 4 ? 'st-4' : b === 5 ? 'st-5' : 'st-x';
-}
-
-/**
- * refreshDatalist merges `set` into the <datalist> autocomplete
- * options for the given element (or element id), preserving
- * existing entries and avoiding duplicates. Sorted ascending.
- *
- * Accepts either a DOM id (string) — matching the original
- * $(id) lookup — or a direct HTMLDataListElement reference, which
- * is more idiomatic when called from a Svelte component holding a
- * bind:this reference.
- */
-export function refreshDatalist(
-  idOrEl: string | HTMLDataListElement | null | undefined,
-  set: Iterable<string>,
-): void {
-  const dl =
-    typeof idOrEl === 'string'
-      ? (document.getElementById(idOrEl) as HTMLDataListElement | null)
-      : idOrEl ?? null;
-  if (!dl) return;
-  const cur = new Set([...dl.options].map((o) => o.value));
-  [...set].sort().forEach((v) => {
-    if (v && !cur.has(v)) {
-      const o = document.createElement('option');
-      o.value = v;
-      dl.appendChild(o);
-    }
-  });
 }

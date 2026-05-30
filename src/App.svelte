@@ -21,11 +21,14 @@
   //   - Header markup & CSS                     (components/Header.svelte)
   //   - Default home page                        (components/Landing.svelte)
   //   - Filter sidebar + datalists              (components/FilterSidebar.svelte)
-  //   - Traces / sessions mode toggle           (components/ListModeToggle.svelte)
   //   - Traces list table + pager methods       (components/TracesList.svelte)
-  //   - Sessions list table                     (components/SessionsList.svelte)
   //   - Detail head/meta/tabs/loading           (components/DetailPanel.svelte)
-  //   - Each tab body                           (components/tabs/*.svelte)
+  //   - Conversation / overview / raw tab body  (components/tabs/*.svelte)
+  //   - Conversation block renderers            (components/blocks/*.svelte)
+  //   - Plugins list + edit modal               (components/plugins/*.svelte)
+  //   - Export filter + bundle download         (components/Export.svelte)
+  //   - Settings page (theme/lang/token/about)  (components/Settings.svelte)
+  //   - Cmd+K command palette                   (components/CommandPalette.svelte)
   //   - Auth modal                              (components/AuthModal.svelte)
   //   - Auth/token plumbing                     (lib/api.ts)
 
@@ -53,7 +56,7 @@
   import OverviewTab from './components/tabs/OverviewTab.svelte';
   import RawTab from './components/tabs/RawTab.svelte';
 
-  import { getTheme, applyTheme } from './lib/theme';
+  import { getTheme, applyTheme } from './lib/theme.svelte';
   import { bindGlobalShortcut } from './lib/keyboard';
 
   // ---------- top-level state ----------

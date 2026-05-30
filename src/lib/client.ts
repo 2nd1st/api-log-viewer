@@ -4,24 +4,6 @@
 // Pure functions; no DOM, no Svelte.
 
 /**
- * Known client family names in declaration order. Other surfaces can
- * use this list to render pills / filters that align with what
- * classifyClient() will actually return.
- */
-export const families: string[] = [
-  'codex',
-  'claude-code',
-  'opencode',
-  'openai-sdk',
-  'anthropic-sdk',
-  'cursor',
-  'continue',
-  'curl',
-  'browser',
-  'unknown',
-];
-
-/**
  * classifyClient inspects a raw User-Agent string and returns the
  * known family + optional version. Falls back to the first
  * whitespace-or-slash-separated chunk of the UA when no family

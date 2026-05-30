@@ -30,7 +30,7 @@
   //     so we leave its rendering alone here; statusText is still a
   //     pass-through prop.
 
-  import { getTheme, toggleTheme } from '../lib/theme';
+  import { getTheme, toggleTheme } from '../lib/theme.svelte';
   import { getLang, setLang, t } from '../lib/i18n.svelte';
 
   export type View = 'landing' | 'traces' | 'plugins' | 'export' | 'settings';
@@ -56,8 +56,6 @@
     onRefresh,
     onAuth,
   }: Props = $props();
-
-  let theme = $state(getTheme());
 </script>
 
 <header>
@@ -107,9 +105,9 @@
     class="theme-toggle"
     aria-label={t('ui.themeToggle')}
     title={t('ui.themeToggle')}
-    onclick={() => { theme = toggleTheme(); }}
+    onclick={() => { toggleTheme(); }}
   >
-    {#if theme === 'dark'}
+    {#if getTheme() === 'dark'}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
       </svg>

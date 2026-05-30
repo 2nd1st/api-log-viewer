@@ -34,6 +34,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { t } from '../lib/i18n.svelte';
+  import { shortTs, fmtMs, statusClass, shortId } from '../lib/format';
 
   // ---------- props ----------
   //
@@ -141,33 +142,10 @@
     return new Date(row.ts_end).getTime() - new Date(row.ts_start).getTime();
   });
 
-  // ---------- formatting helpers (1:1 with legacy) ----------
-
-  function shortTs(ts: string | null | undefined): string {
-    if (!ts) return '';
-    const d = new Date(ts);
-    return (
-      d.toLocaleTimeString('en-GB', { hour12: false }) +
-      '.' +
-      String(d.getMilliseconds()).padStart(3, '0')
-    );
-  }
-
-  function fmtMs(ms: number | null): string {
-    if (ms == null) return '—';
-    if (ms < 1000) return ms + 'ms';
-    return (ms / 1000).toFixed(2) + 's';
-  }
-
-  function statusClass(s: number | null | undefined): string {
-    if (!s || s < 100) return 'st-x';
-    const b = Math.floor(s / 100);
-    return b === 2 ? 'st-2' : b === 4 ? 'st-4' : b === 5 ? 'st-5' : 'st-x';
-  }
-
-  function shortId(id: string | null | undefined): string {
-    return id ? id.slice(-8) : '';
-  }
+  // ---------- formatting helpers ----------
+  //
+  // shortTs / fmtMs / statusClass / shortId are imported from
+  // lib/format.ts (single source of truth across the viewer).
 
   function selectTab(t: DetailTab) {
     detailTab = t;

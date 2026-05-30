@@ -37,7 +37,7 @@
   } from '../../lib/promptSource';
   import { translateStopReason } from '../../lib/stopReason';
   import type { StopTone } from '../../lib/stopReason';
-  import { shortId, humanBytes } from '../../lib/format';
+  import { shortId, humanBytes, fmtMs } from '../../lib/format';
   import type { TraceBlob, TraceRow } from '../DetailPanel.svelte';
   import { t } from '../../lib/i18n.svelte';
 
@@ -61,12 +61,6 @@
     if (!row?.ts_start || !row?.ts_end) return null;
     return new Date(row.ts_end).getTime() - new Date(row.ts_start).getTime();
   });
-
-  function fmtMs(ms: number | null): string {
-    if (ms == null) return '—';
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  }
 
   function fmtNum(n: number | null | undefined): string {
     if (n == null) return '—';

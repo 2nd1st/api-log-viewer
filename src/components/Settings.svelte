@@ -37,7 +37,7 @@
 
   import { onMount } from 'svelte';
   import { DEFAULT_PATH_KEY, api, getToken, setToken } from '../lib/api';
-  import { getTheme, setTheme, type Theme } from '../lib/theme';
+  import { getTheme, setTheme, type Theme } from '../lib/theme.svelte';
   import { getLang, setLang, t } from '../lib/i18n.svelte';
 
   interface Props {
@@ -49,13 +49,12 @@
 
   // ---------- DISPLAY: theme ----------
   //
-  // getTheme() is a plain localStorage read, not a rune — mirror in
-  // local $state so the toggle's on/off visual reacts on click.
-  let themeValue = $state<Theme>(getTheme());
+  // getTheme() is backed by module $state in lib/theme.svelte.ts —
+  // reading it in-template is reactive (Header relies on the same
+  // pattern). No local mirror.
 
   function toggleThemeRow() {
-    const next: Theme = themeValue === 'dark' ? 'light' : 'dark';
-    themeValue = next;
+    const next: Theme = getTheme() === 'dark' ? 'light' : 'dark';
     setTheme(next);
   }
 
@@ -286,9 +285,9 @@
             id="settings-theme-toggle"
             type="button"
             role="switch"
-            aria-checked={themeValue === 'light'}
+            aria-checked={getTheme() === 'light'}
             class="switch"
-            class:on={themeValue === 'light'}
+            class:on={getTheme() === 'light'}
             onclick={toggleThemeRow}
             title={t('ui.themeToggle')}
           >

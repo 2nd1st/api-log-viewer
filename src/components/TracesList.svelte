@@ -190,17 +190,17 @@
       let pathsChanged = false;
       let modelsChanged = false;
       let keysChanged = false;
-      for (const t of rows) {
-        if (t.path && !knownPaths.has(t.path)) {
-          knownPaths.add(t.path);
+      for (const row of rows) {
+        if (row.path && !knownPaths.has(row.path)) {
+          knownPaths.add(row.path);
           pathsChanged = true;
         }
-        if (t.model && !knownModels.has(t.model)) {
-          knownModels.add(t.model);
+        if (row.model && !knownModels.has(row.model)) {
+          knownModels.add(row.model);
           modelsChanged = true;
         }
-        if (t.key_hash && !knownKeys.has(t.key_hash)) {
-          knownKeys.add(t.key_hash);
+        if (row.key_hash && !knownKeys.has(row.key_hash)) {
+          knownKeys.add(row.key_hash);
           keysChanged = true;
         }
       }
