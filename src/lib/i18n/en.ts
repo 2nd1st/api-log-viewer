@@ -43,7 +43,6 @@ export const en: Record<string, string> = {
   'home.data': 'data',
   'home.lastWrite': 'last write',
   'home.media': 'media',
-  'home.mediaFiles': '{n} files',
   'home.mediaPerTrace': 'avg {n}/trace',
   'home.dataRate': '{rate}/h',
   'home.prompt': 'prompt',
@@ -292,4 +291,53 @@ export const en: Record<string, string> = {
   'overview.respJsonBody': 'json body {size}',
   'overview.respSseEvents': '{n} SSE events',
   'overview.respB64': 'b64 {size}',
+
+  // ---------- detail panel shell (DetailPanel.svelte) ----------
+  // Tab labels stay lowercase per the casing convention (CSS applies
+  // text-transform: uppercase to .tabs button). Meta header uses the
+  // abbreviated literals "dur" / "model" / "tokens" / "key" / "parent"
+  // — distinct from overview.* which uses the full words.
+  'detail.loading': 'loading {id}',
+  'detail.loadFailed': 'load failed: {message}',
+  'detail.selectTrace': 'select a trace',
+  'detail.tabOverview': 'overview',
+  'detail.tabConversation': 'conversation',
+  'detail.tabRaw': 'raw',
+  'detail.metaDur': 'dur',
+  'detail.metaModel': 'model',
+  'detail.metaTokens': 'tokens',
+  'detail.metaKey': 'key',
+  'detail.metaParent': 'parent',
+
+  // ---------- conversation tab (ConversationTab.svelte) ----------
+  // Count labels preserve the underlying Block type strings (snake_case)
+  // so the strip reads "3 tool_call" / "1 tool_result" the same way the
+  // adapter emits them.
+  'conversation.includeSession': 'include earlier turns from this session ({id})',
+  'conversation.loadingTranscript': 'loading session transcript…',
+  'conversation.transcriptFailed': 'session transcript failed: {message}',
+  'conversation.sessionTurn': 'turn {n} · {ts} · {id}',
+  'conversation.empty': 'no extractable conversation',
+  'conversation.count.text': 'text',
+  'conversation.count.reasoning': 'reasoning',
+  'conversation.count.tool_call': 'tool_call',
+  'conversation.count.tool_result': 'tool_result',
+  'conversation.count.media': 'media',
+  'conversation.count.error': 'error',
+  'conversation.count.unknown': 'unknown',
+
+  // ---------- raw tab (RawTab.svelte) ----------
+  // Section labels are the merged four-block form ("request headers" etc.)
+  // — headers + body tabs were combined 2026-05-30. Hints are the
+  // singular/plural entry count or human-byte size.
+  'raw.reqHeaders': 'request headers',
+  'raw.reqBody': 'request body',
+  'raw.respHeaders': 'response headers',
+  'raw.respBody': 'response body',
+  'raw.entryOne': '{n} entry',
+  'raw.entryMany': '{n} entries',
+  'raw.empty': 'empty',
+  'raw.streamed': 'streamed',
+  'raw.noHeaders': 'no headers captured',
+  'raw.streamedNote': 'response was streamed; see conversation tab for accumulated blocks',
 };

@@ -41,7 +41,6 @@ export const zh: Record<string, string> = {
   'home.data': '数据量',
   'home.lastWrite': '最近写入',
   'home.media': '媒体',
-  'home.mediaFiles': '{n} 个文件',
   'home.mediaPerTrace': '平均 {n}/记录',
   'home.dataRate': '{rate}/小时',
   'home.prompt': '输入',
@@ -283,4 +282,50 @@ export const zh: Record<string, string> = {
   'overview.respJsonBody': 'json body {size}',
   'overview.respSseEvents': '{n} SSE 事件',
   'overview.respB64': 'b64 {size}',
+
+  // ---------- detail ----------
+  // Tab 名称用最短的中文双字 — "概览 / 对话 / 原始"。元信息标签延续
+  // overview.* 的语调（duration → "耗时"），但用更短的两字版本对应
+  // 顶栏 "dur / model / tokens / key / parent"。token / key 保留英文。
+  'detail.loading': '正在加载 {id}',
+  'detail.loadFailed': '加载失败：{message}',
+  'detail.selectTrace': '请选择一条记录',
+  'detail.tabOverview': '概览',
+  'detail.tabConversation': '对话',
+  'detail.tabRaw': '原始',
+  'detail.metaDur': '耗时',
+  'detail.metaModel': '模型',
+  'detail.metaTokens': 'tokens',
+  'detail.metaKey': 'key',
+  'detail.metaParent': '父记录',
+
+  // ---------- conversation ----------
+  // 类型计数保留 Block.type 的 snake_case 原文 —— 它们对应代码里的
+  // 实际值，操作者读 tool_call / tool_result 比读"工具调用"更熟。
+  'conversation.includeSession': '包含此会话的更早轮次 ({id})',
+  'conversation.loadingTranscript': '加载会话脚本中…',
+  'conversation.transcriptFailed': '会话脚本加载失败：{message}',
+  'conversation.sessionTurn': '第 {n} 轮 · {ts} · {id}',
+  'conversation.empty': '没有可提取的对话',
+  'conversation.count.text': 'text',
+  'conversation.count.reasoning': 'reasoning',
+  'conversation.count.tool_call': 'tool_call',
+  'conversation.count.tool_result': 'tool_result',
+  'conversation.count.media': 'media',
+  'conversation.count.error': 'error',
+  'conversation.count.unknown': 'unknown',
+
+  // ---------- raw ----------
+  // 四段合并版（请求头 / 请求体 / 响应头 / 响应体）—— 2026-05-30
+  // 把 headers + body 合到一个 tab 后的实际渲染顺序。
+  'raw.reqHeaders': '请求头',
+  'raw.reqBody': '请求体',
+  'raw.respHeaders': '响应头',
+  'raw.respBody': '响应体',
+  'raw.entryOne': '{n} 项',
+  'raw.entryMany': '{n} 项',
+  'raw.empty': '空',
+  'raw.streamed': '流式',
+  'raw.noHeaders': '未捕获到 header',
+  'raw.streamedNote': '响应为流式；累计区块详见 conversation 标签',
 };

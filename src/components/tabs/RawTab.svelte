@@ -13,6 +13,7 @@
   // tab — never the retired events tab.
 
   import type { TraceBlob } from '../DetailPanel.svelte';
+  import { t } from '../../lib/i18n.svelte';
 
   const { trace }: { trace: TraceBlob | null | undefined } = $props();
 
@@ -217,8 +218,8 @@
       onclick={() => (openReqHeaders = !openReqHeaders)}
     >
       <span class="glyph">{openReqHeaders ? '▾' : '▸'}</span>
-      <span class="label">request headers</span>
-      <span class="hint">{reqHeadersCount} {reqHeadersCount === 1 ? 'entry' : 'entries'}</span>
+      <span class="label">{t('raw.reqHeaders')}</span>
+      <span class="hint">{t(reqHeadersCount === 1 ? 'raw.entryOne' : 'raw.entryMany', { n: reqHeadersCount })}</span>
     </button>
     {#if openReqHeaders}
       <div class="sec-body">
@@ -230,7 +231,7 @@
             {/each}
           </div>
         {:else}
-          <div class="empty">no headers captured</div>
+          <div class="empty">{t('raw.noHeaders')}</div>
         {/if}
       </div>
     {/if}
@@ -245,8 +246,8 @@
       onclick={() => (openReqBody = !openReqBody)}
     >
       <span class="glyph">{openReqBody ? '▾' : '▸'}</span>
-      <span class="label">request body</span>
-      <span class="hint">{reqBodyBytes > 0 ? humanBytes(reqBodyBytes) : 'empty'}</span>
+      <span class="label">{t('raw.reqBody')}</span>
+      <span class="hint">{reqBodyBytes > 0 ? humanBytes(reqBodyBytes) : t('raw.empty')}</span>
     </button>
     {#if openReqBody}
       <div class="sec-body">
@@ -264,8 +265,8 @@
       onclick={() => (openResHeaders = !openResHeaders)}
     >
       <span class="glyph">{openResHeaders ? '▾' : '▸'}</span>
-      <span class="label">response headers</span>
-      <span class="hint">{resHeadersCount} {resHeadersCount === 1 ? 'entry' : 'entries'}</span>
+      <span class="label">{t('raw.respHeaders')}</span>
+      <span class="hint">{t(resHeadersCount === 1 ? 'raw.entryOne' : 'raw.entryMany', { n: resHeadersCount })}</span>
     </button>
     {#if openResHeaders}
       <div class="sec-body">
@@ -277,7 +278,7 @@
             {/each}
           </div>
         {:else}
-          <div class="empty">no headers captured</div>
+          <div class="empty">{t('raw.noHeaders')}</div>
         {/if}
       </div>
     {/if}
@@ -292,13 +293,13 @@
       onclick={() => (openResBody = !openResBody)}
     >
       <span class="glyph">{openResBody ? '▾' : '▸'}</span>
-      <span class="label">response body</span>
+      <span class="label">{t('raw.respBody')}</span>
       <span class="hint"
         >{respBodyBytes > 0
           ? humanBytes(respBodyBytes)
           : hasRespEvents
-            ? 'streamed'
-            : 'empty'}</span
+            ? t('raw.streamed')
+            : t('raw.empty')}</span
       >
     </button>
     {#if openResBody}
@@ -307,10 +308,10 @@
           <pre class="json">{@html respBodyHtml}</pre>
         {:else if hasRespEvents}
           <pre class="json"><span style="color:var(--fg-dim)"
-              >response was streamed; see conversation tab for accumulated blocks</span
+              >{t('raw.streamedNote')}</span
             ></pre>
         {:else}
-          <pre class="json"><span style="color:var(--fg-dim)">empty</span></pre>
+          <pre class="json"><span style="color:var(--fg-dim)">{t('raw.empty')}</span></pre>
         {/if}
       </div>
     {/if}

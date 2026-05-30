@@ -33,6 +33,7 @@
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { t } from '../lib/i18n.svelte';
 
   // ---------- props ----------
   //
@@ -184,11 +185,11 @@
 
 <div id="detail">
   {#if loadState === 'loading' && !detail}
-    <div class="empty">loading {traceId ?? ''}</div>
+    <div class="empty">{t('detail.loading', { id: traceId ?? '' })}</div>
   {:else if loadState === 'error'}
-    <div class="empty">load failed: {loadError}</div>
+    <div class="empty">{t('detail.loadFailed', { message: loadError })}</div>
   {:else if !detail}
-    <div class="empty">select a trace</div>
+    <div class="empty">{t('detail.selectTrace')}</div>
   {:else}
     {@const row = detail.row}
     <div class="head">
@@ -200,13 +201,13 @@
       </div>
       <div class="meta">
         <span><b>{shortTs(row.ts_start)}</b></span>
-        <span>dur <b>{fmtMs(durMs)}</b></span>
-        <span>model <b>{row.model || '—'}</b></span>
-        <span>tokens <b>{row.prompt_tokens ?? '—'} / {row.completion_tokens ?? '—'}</b></span>
-        <span>key <b>{(row.key_hash || '').slice(0, 8) || '—'}</b></span>
+        <span>{t('detail.metaDur')} <b>{fmtMs(durMs)}</b></span>
+        <span>{t('detail.metaModel')} <b>{row.model || '—'}</b></span>
+        <span>{t('detail.metaTokens')} <b>{row.prompt_tokens ?? '—'} / {row.completion_tokens ?? '—'}</b></span>
+        <span>{t('detail.metaKey')} <b>{(row.key_hash || '').slice(0, 8) || '—'}</b></span>
         {#if row.parent_id}
           <span>
-            parent
+            {t('detail.metaParent')}
             <b>
               <a
                 href={`#/traces/${row.parent_id}`}
@@ -218,13 +219,19 @@
       </div>
     </div>
     <div class="tabs">
-      {#each tabs as t (t)}
+      {#each tabs as tab (tab)}
         <button
           type="button"
-          data-tab={t}
-          class={t === detailTab ? 'active' : ''}
-          onclick={() => selectTab(t)}
-        >{t}</button>
+          data-tab={tab}
+          class={tab === detailTab ? 'active' : ''}
+          onclick={() => selectTab(tab)}
+        >{t(
+          tab === 'overview'
+            ? 'detail.tabOverview'
+            : tab === 'conversation'
+              ? 'detail.tabConversation'
+              : 'detail.tabRaw',
+        )}</button>
       {/each}
     </div>
     <div class="body" id="detail-panel">

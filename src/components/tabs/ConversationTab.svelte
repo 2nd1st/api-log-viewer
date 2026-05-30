@@ -29,6 +29,7 @@
   import { adapt } from '../../lib/adapters';
   import type { Block } from '../../lib/blocks';
   import { countByType } from '../../lib/blocks';
+  import { t } from '../../lib/i18n.svelte';
 
   import TextBlockComp from '../blocks/TextBlock.svelte';
   import ReasoningBlockComp from '../blocks/ReasoningBlock.svelte';
@@ -195,26 +196,30 @@
         onIncludeSessionToggle((e.currentTarget as HTMLInputElement).checked)}
       disabled={!hasSession}
     />
-    include earlier turns from this session ({shortId(row.session_root_id)})
+    {t('conversation.includeSession', { id: shortId(row.session_root_id) })}
   </label>
   <div class="counts">
-    {#each COUNT_ORDER as t (t)}
-      {#if (counts[t] || 0) > 0}
-        <span class="count">{counts[t]} {t}</span>
+    {#each COUNT_ORDER as kind (kind)}
+      {#if (counts[kind] || 0) > 0}
+        <span class="count">{counts[kind]} {t(`conversation.count.${kind}`)}</span>
       {/if}
     {/each}
   </div>
 </div>
 
 {#if includeSession && hasSession && transcript.kind === 'loading'}
-  <div class="muted">loading session transcript…</div>
+  <div class="muted">{t('conversation.loadingTranscript')}</div>
 {:else if includeSession && hasSession && transcript.kind === 'error'}
-  <div class="err">session transcript failed: {transcript.message}</div>
+  <div class="err">{t('conversation.transcriptFailed', { message: transcript.message })}</div>
 {:else if includeSession && hasSession && transcript.kind === 'ready'}
   <div class="blocks">
     {#each transcript.entries as entry, i (entry.traceId)}
       <div class="session-divider">
-        turn {i + 1} · {shortTs(entry.tsStart)} · {shortId(entry.traceId)}
+        {t('conversation.sessionTurn', {
+          n: i + 1,
+          ts: shortTs(entry.tsStart),
+          id: shortId(entry.traceId),
+        })}
       </div>
       {#each entry.blocks as block (block.sequence_number ?? `${entry.traceId}:${block.type}:${block.source.path ?? ''}`)}
         {@const wrapperId =
@@ -250,7 +255,7 @@
     {/each}
   </div>
 {:else if singleTraceBlocks.length === 0}
-  <div class="muted">no extractable conversation</div>
+  <div class="muted">{t('conversation.empty')}</div>
 {:else}
   <div class="blocks">
     {#each singleTraceBlocks as block (block.sequence_number ?? `${block.type}:${block.source.path ?? ''}`)}
