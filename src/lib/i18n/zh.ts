@@ -328,4 +328,11 @@ export const zh: Record<string, string> = {
   'raw.streamed': '流式',
   'raw.noHeaders': '未捕获到 header',
   'raw.streamedNote': '响应为流式；累计区块详见 conversation 标签',
+  // jsonHL() HTML 字符串构造器使用的文案 —— 由模板里 t() 取出后以 record
+  // 形式传入，{size}/{img}/{k} 由构造器替换。{img} 仅在被省略的字符串看起来
+  // 是 base64 图片时展开为 raw.elidedImg，否则替换为空串。
+  'raw.showAsImage': '查看图片',
+  'raw.showRaw': '查看原文',
+  'raw.elidedTpl': '[已省略 {size}{img} · key={k}]',
+  'raw.elidedImg': ' · base64 图片',
 };

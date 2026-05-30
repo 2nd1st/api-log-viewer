@@ -121,7 +121,20 @@
     return value;
   }
 
-  function jsonHL(value: unknown): string {
+  // jsonHL() lives outside the Svelte template, so it can't subscribe to
+  // i18n lang reactivity on its own — the returned HTML string would be
+  // stale across language switches. Call sites thread the visible label
+  // strings in via this record (sourced from t() inside a $derived) so
+  // the template re-runs jsonHL whenever the labels change.
+  type JsonHLLabels = {
+    showImage: string;
+    showRaw: string;
+    elidedTpl: string;   // contains {size}, {img}, {k} placeholders
+    elidedImg: string;   // expansion for {img} when value looks like base64 image
+    empty: string;       // empty-body fallback (used by callers, not jsonHL itself)
+  };
+
+  function jsonHL(value: unknown, labels: JsonHLLabels): string {
     const elided = elideHuge(value, '');
     const j = JSON.stringify(elided, null, 2);
     if (j == null) return '';
@@ -141,14 +154,34 @@
         const sz = humanBytes(e.value.length);
         const isImg = looksLikeBase64Image(e.value, e.parentKey);
         const imgBtn = isImg
-          ? ` <button class="elide-btn" data-tok="${tok}" data-kind="image">show as image</button>`
+          ? ` <button class="elide-btn" data-tok="${tok}" data-kind="image">${labels.showImage}</button>`
           : '';
-        const rawBtn = ` <button class="elide-btn" data-tok="${tok}" data-kind="raw">show raw</button>`;
-        return `<span class="elided">[elided ${sz}${isImg ? ' · base64 image' : ''} · key=${esc(e.parentKey || '?')}]</span>${imgBtn}${rawBtn}`;
+        const rawBtn = ` <button class="elide-btn" data-tok="${tok}" data-kind="raw">${labels.showRaw}</button>`;
+        // Function replacers — guard against `$` in size / key triggering
+        // String.replace's $&/$' special patterns. esc() also handles
+        // the `?` fallback + HTML-escaping of arbitrary key strings.
+        const elidedText = labels.elidedTpl
+          .replace('{size}', () => sz)
+          .replace('{img}', () => (isImg ? labels.elidedImg : ''))
+          .replace('{k}', () => esc(e.parentKey || '?'));
+        return `<span class="elided">${elidedText}</span>${imgBtn}${rawBtn}`;
       },
     );
     return out;
   }
+
+  // Labels for the jsonHL() HTML-string builder. Wrapped in $derived so
+  // they re-evaluate on lang change — t() is reactive to lang state, but
+  // jsonHL's returned HTML string isn't re-scanned by Svelte's template,
+  // so the {@html ...} only re-renders when the labels record (which is
+  // a tracked dependency of reqBodyHtml / respBodyHtml) changes.
+  const jsonLabels = $derived({
+    showImage: t('raw.showAsImage'),
+    showRaw: t('raw.showRaw'),
+    elidedTpl: t('raw.elidedTpl'),
+    elidedImg: t('raw.elidedImg'),
+    empty: t('raw.empty'),
+  });
 
   // Reset the elision store at the start of each render pass so tokens
   // from a previous trace never leak into the current one. The store is
@@ -158,11 +191,13 @@
     void reqBody;
     elidedStore = new Map();
     elidedSeq = 0;
-    return reqBody ? jsonHL(reqBody) : '<span style="color:var(--fg-dim)">empty</span>';
+    return reqBody
+      ? jsonHL(reqBody, jsonLabels)
+      : `<span style="color:var(--fg-dim)">${jsonLabels.empty}</span>`;
   });
   const respBodyHtml = $derived.by(() => {
     void respBody;
-    return respBody ? jsonHL(respBody) : null;
+    return respBody ? jsonHL(respBody, jsonLabels) : null;
   });
 
   // Delegated click handler for the elision expand-buttons. Scoped to

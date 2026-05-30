@@ -340,4 +340,13 @@ export const en: Record<string, string> = {
   'raw.streamed': 'streamed',
   'raw.noHeaders': 'no headers captured',
   'raw.streamedNote': 'response was streamed; see conversation tab for accumulated blocks',
+  // jsonHL() HTML-string builder labels — passed in as a record because the
+  // builder lives outside the Svelte template and can't subscribe to lang
+  // reactivity on its own. {size}, {img}, {k} are interpolated by the builder.
+  // {img} expands to raw.elidedImg only when the elided value looks like a
+  // base64 image; otherwise it expands to the empty string.
+  'raw.showAsImage': 'show as image',
+  'raw.showRaw': 'show raw',
+  'raw.elidedTpl': '[elided {size}{img} · key={k}]',
+  'raw.elidedImg': ' · base64 image',
 };
