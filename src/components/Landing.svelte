@@ -1,34 +1,29 @@
 <script lang="ts">
   // Landing — default home view (#/, #/landing, #/dashboard alias).
   //
-  // Operator-triage layout, not analytics. Sections in render order:
+  // Phase 2 A reshape (operator 2026-05-30):
   //
-  //   STATUS             — six metric cells: PROXY :7861, API :7862,
-  //                        UPTIME, TRACES (healthz.appended), DATA bytes,
-  //                        LAST WRITE (newest row age from sample)
-  //   CAPABILITY         — protocol chips lit/dim; lit when at least
-  //                        one trace in the last hour used that protocol.
-  //                        Lit = bright --fg, dim = --fg-dim. No accent
-  //                        on status/presence signals.
-  //   NEEDS ATTENTION    — rows in the last 30 min where
-  //                        status≥400 OR dur>30s OR truncated
-  //   ACTIVE CLIENTS     — top 5 client_kind groups from the 200-row
-  //                        sample: kind | version (most recent) | count
-  //   TOKEN USAGE        — sums over the 200-row sample: PROMPT,
-  //                        COMPLETION, CACHE READ (with hit-rate),
-  //                        CACHE CREATION
-  //   VOLUME             — traces/min bar sparkline over last 60 min
-  //                        from the same sample. --accent fills bars.
-  //   INTERNAL · healthz — collapsible (default closed). Caret takes
-  //                        --accent only when open. Auto-opens on the
-  //                        rising edge of drops/dial-err/etc.
+  //   - Cut NEEDS ATTENTION + INTERNAL · healthz. Service-ops UI lives in
+  //     CPA / sub2gpt; the viewer's job is LLM content, not service ops.
+  //   - 5 sections in render order: STATUS, CAPABILITY, ACTIVE CLIENTS,
+  //     TOKEN USAGE, VOLUME.
+  //   - Vercel aesthetic: wider whitespace, larger sans display numbers,
+  //     right-aligned numerics, 6px corners, subtle 150ms hover, no
+  //     drop shadows, bordered-only cards.
+  //   - Single accent (teal-300) is reserved for active state / palette
+  //     selected row / focus ring. NOT used on sparkline fill or block
+  //     left rails — the page reads more monochrome.
   //
-  // Fetch shape: /api/traces?limit=200 + /healthz every 10s. The slow
-  // ?since=monday week-count is gone — Phase L explicitly drops it.
-  // A 1s now-ticker drives relative-time labels independently of polls.
+  // Fetch shape: /api/traces?limit=200 + /healthz every 10s. The bulk
+  // healthz card grid is gone; we still poll healthz for the STATUS strip
+  // (uptime, total traces appended, total bytes).
+  //
+  // i18n: every user-visible English string goes through t('home.*');
+  // numeric values + dates are formatted but not translated.
 
   import { detectProtocol, type Protocol } from '../lib/adapters';
-  import { humanBytes, fmtMs, statusClass } from '../lib/format';
+  import { humanBytes } from '../lib/format';
+  import { t } from '../lib/i18n.svelte';
 
   // ---------- row shape (subset of /api/traces row) ----------
 
@@ -63,10 +58,10 @@
   let now = $state(Date.now());
 
   $effect(() => {
-    const t = setInterval(() => {
+    const tick = setInterval(() => {
       now = Date.now();
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(tick);
   });
 
   // ---------- list state ----------
@@ -89,31 +84,15 @@
   }
 
   // ---------- healthz state ----------
-
-  interface TimingBucket {
-    p50_ms?: number;
-    p95_ms?: number;
-    p99_ms?: number;
-    count?: number;
-    mean_ms?: number;
-  }
+  //
+  // Only the three fields STATUS reads (uptime_seconds + appended +
+  // total_bytes) matter now that the INTERNAL card grid is gone. The
+  // wider counters type is kept narrow so type errors surface if the
+  // backend shape drifts.
 
   interface HealthzCounters {
     appended?: number;
-    appended_2xx?: number;
-    appended_4xx?: number;
-    appended_5xx?: number;
-    indexed?: number;
-    drop_writer_full?: number;
-    drop_jsonl_fail?: number;
-    drop_sqlite_fail?: number;
-    truncated_req_total?: number;
-    truncated_resp_total?: number;
-    writer_chan_high_water?: number;
-    slow_traces?: number;
-    upstream_dial_err?: number;
     total_bytes?: number;
-    timings?: Record<string, TimingBucket>;
   }
 
   interface Healthz {
@@ -122,16 +101,15 @@
   }
 
   let healthz = $state<Healthz | null>(null);
-  let healthzLoadError = $state<string>('');
 
   async function loadHealthz() {
     try {
       const r = await authFetch('healthz');
       if (!r.ok) throw new Error(String(r.status));
       healthz = (await r.json()) as Healthz;
-      healthzLoadError = '';
-    } catch (e: any) {
-      healthzLoadError = e?.message || String(e);
+    } catch {
+      // STATUS cells degrade to em-dash on failure; no banner needed
+      // here — the proxy/api dot still reads from lastPollAt.
     }
   }
 
@@ -140,11 +118,11 @@
   $effect(() => {
     loadList();
     loadHealthz();
-    const t = setInterval(() => {
+    const poll = setInterval(() => {
       loadList();
       loadHealthz();
     }, 10_000);
-    return () => clearInterval(t);
+    return () => clearInterval(poll);
   });
 
   // ---------- STATUS derivations ----------
@@ -175,13 +153,13 @@
   });
 
   // Newest ts_start in the sample → relative-age label. Falls back to
-  // last poll time on cold start so the cell isn't blank.
+  // em-dash on cold start.
   const lastWriteLabel = $derived.by(() => {
     let newest = 0;
     for (const r of rows) {
       if (!r.ts_start) continue;
-      const t = new Date(r.ts_start).getTime();
-      if (Number.isFinite(t) && t > newest) newest = t;
+      const ts = new Date(r.ts_start).getTime();
+      if (Number.isFinite(ts) && ts > newest) newest = ts;
     }
     if (newest === 0) return '—';
     const ageSec = Math.max(0, Math.floor((now - newest) / 1000));
@@ -205,74 +183,12 @@
     const seen = new Set<Protocol>();
     for (const r of rows) {
       if (!r.ts_start) continue;
-      const t = new Date(r.ts_start).getTime();
-      if (Number.isNaN(t) || t < cutoff) continue;
+      const ts = new Date(r.ts_start).getTime();
+      if (Number.isNaN(ts) || ts < cutoff) continue;
       seen.add(detectProtocol(r.path));
     }
     return seen;
   });
-
-  // ---------- NEEDS ATTENTION ----------
-  //
-  // Last 30 min, status≥400 OR slow (>30s) OR truncated. Empty state is
-  // rendered (not hidden) — "yes I checked, nothing is on fire" is the
-  // load-bearing value for an operator.
-
-  const ATTENTION_WINDOW_MS = 30 * 60 * 1000;
-  const ATTENTION_LIMIT = 10;
-  const SLOW_MS = 30_000;
-
-  type Incident = ListRow & {
-    _ageLabel: string;
-    _durMs: number | null;
-    _reasons: string[];
-  };
-
-  const incidents = $derived.by<Incident[]>(() => {
-    const cutoff = now - ATTENTION_WINDOW_MS;
-    const out: Incident[] = [];
-    for (const r of rows) {
-      if (!r.ts_start) continue;
-      const t = new Date(r.ts_start).getTime();
-      if (Number.isNaN(t) || t < cutoff) continue;
-      const status = r.status ?? 0;
-      let durMs: number | null = null;
-      if (r.ts_start && r.ts_end) {
-        const d = new Date(r.ts_end).getTime() - t;
-        if (Number.isFinite(d)) durMs = d;
-      }
-      const reasons: string[] = [];
-      if (status >= 500) reasons.push('5xx');
-      else if (status >= 400) reasons.push('4xx');
-      if (durMs != null && durMs > SLOW_MS) reasons.push('slow');
-      if (r.truncated_req || r.truncated_resp) reasons.push('truncated');
-      if (reasons.length === 0) continue;
-
-      const ageSec = Math.max(0, Math.floor((now - t) / 1000));
-      let ageLabel: string;
-      if (ageSec < 60) ageLabel = `${ageSec}s ago`;
-      else if (ageSec < 3600) ageLabel = `${Math.floor(ageSec / 60)}m ago`;
-      else ageLabel = `${Math.floor(ageSec / 3600)}h ago`;
-
-      out.push({
-        ...r,
-        _ageLabel: ageLabel,
-        _durMs: durMs,
-        _reasons: reasons,
-      });
-      if (out.length >= ATTENTION_LIMIT) break;
-    }
-    return out;
-  });
-
-  function jumpToTrace(id: string) {
-    window.location.hash = `#/traces/${id}`;
-  }
-
-  function shortKey(k: string | null | undefined): string {
-    if (!k) return '—';
-    return k.slice(0, 8);
-  }
 
   // ---------- ACTIVE CLIENTS ----------
   //
@@ -314,7 +230,7 @@
   //
   // Four sums over the 200-row sample. Cache hit-rate = cached_tokens
   // sum / prompt_tokens sum, rendered alongside the CACHE READ value
-  // in muted mono — no status color (it's a ratio, not a signal).
+  // in muted sans (it's a ratio, not a signal).
 
   const tokenTotals = $derived.by(() => {
     let prompt = 0;
@@ -339,6 +255,9 @@
   }
 
   // ---------- VOLUME sparkline ----------
+  //
+  // Bars use --fg (not --accent) per the Phase 2 A monochrome shift:
+  // accent is reserved for active state / focus / palette selection.
 
   const SPARK_BUCKETS = 60;
   const SPARK_BUCKET_MS = 60_000;
@@ -351,9 +270,9 @@
     const cutoff = now - windowMs;
     for (const r of rows) {
       if (!r.ts_start) continue;
-      const t = new Date(r.ts_start).getTime();
-      if (Number.isNaN(t) || t < cutoff || t > now) continue;
-      const ageMs = now - t;
+      const ts = new Date(r.ts_start).getTime();
+      if (Number.isNaN(ts) || ts < cutoff || ts > now) continue;
+      const ageMs = now - ts;
       const fromEnd = Math.floor(ageMs / SPARK_BUCKET_MS);
       const idx = SPARK_BUCKETS - 1 - fromEnd;
       if (idx >= 0 && idx < SPARK_BUCKETS) buckets[idx]++;
@@ -375,142 +294,50 @@
     return { bars, max, total };
   });
 
-  // ---------- INTERNAL · healthz ----------
+  // ---------- TOKEN USAGE hit-rate formatting ----------
 
-  let internalOpen = $state(false);
-  let prevHasAlert = false;
-
-  interface HCard {
-    label: string;
-    value: string;
-    sub: string;
-    kind: null | 'bad' | 'warn';
-  }
-
-  const healthzCards = $derived.by<HCard[]>(() => {
-    if (!healthz) return [];
-    const c = (healthz.counters || {}) as HealthzCounters;
-    const drops =
-      ((c.drop_writer_full ?? 0) | 0) +
-      ((c.drop_jsonl_fail ?? 0) | 0) +
-      ((c.drop_sqlite_fail ?? 0) | 0);
-    const trunc =
-      ((c.truncated_req_total ?? 0) | 0) +
-      ((c.truncated_resp_total ?? 0) | 0);
-    return [
-      {
-        label: 'appended',
-        value: String(c.appended ?? 0),
-        sub: `2xx ${(c.appended_2xx ?? 0) | 0} · 4xx ${(c.appended_4xx ?? 0) | 0} · 5xx ${(c.appended_5xx ?? 0) | 0}`,
-        kind: null,
-      },
-      {
-        label: 'indexed',
-        value: String(c.indexed ?? 0),
-        sub: `lag ${(c.appended ?? 0) - (c.indexed ?? 0)}`,
-        kind: null,
-      },
-      {
-        label: 'drops',
-        value: String(drops),
-        sub: `writer ${(c.drop_writer_full ?? 0) | 0} · jsonl ${(c.drop_jsonl_fail ?? 0) | 0} · sqlite ${(c.drop_sqlite_fail ?? 0) | 0}`,
-        kind: drops > 0 ? 'bad' : null,
-      },
-      {
-        label: 'truncated',
-        value: String(trunc),
-        sub: `req ${(c.truncated_req_total ?? 0) | 0} · resp ${(c.truncated_resp_total ?? 0) | 0}`,
-        kind: trunc > 0 ? 'warn' : null,
-      },
-      {
-        label: 'writer chan',
-        value: String(c.writer_chan_high_water ?? 0),
-        sub: 'high-water / 1024',
-        kind: null,
-      },
-      {
-        label: 'slow traces',
-        value: String((c.slow_traces ?? 0) | 0),
-        sub: '> 30s end-to-end',
-        kind: ((c.slow_traces ?? 0) | 0) > 0 ? 'warn' : null,
-      },
-      {
-        label: 'upstream dial err',
-        value: String((c.upstream_dial_err ?? 0) | 0),
-        sub: 'dns / tls / refused',
-        kind: ((c.upstream_dial_err ?? 0) | 0) > 0 ? 'bad' : null,
-      },
-    ];
-  });
-
-  const hasAlert = $derived(
-    healthzCards.some((c) => c.kind === 'bad' || c.kind === 'warn'),
-  );
-
-  // Force-open on rising edge (clean → alert) so the operator notices
-  // even with the section collapsed.
-  $effect(() => {
-    const cur = hasAlert;
-    if (cur && !prevHasAlert) internalOpen = true;
-    prevHasAlert = cur;
-  });
-
-  const TIMING_KEYS = ['drain_ms', 'parse_ms', 'sqlite_ms'] as const;
-
-  const healthzTimings = $derived.by(() => {
-    if (!healthz) return [];
-    const t = healthz.counters?.timings || {};
-    return TIMING_KEYS.map((k) => {
-      const v: TimingBucket = t[k] || {};
-      return {
-        key: k,
-        label: k.replace('_ms', ''),
-        p50: v.p50_ms ?? 0,
-        p95: v.p95_ms ?? 0,
-        p99: v.p99_ms ?? 0,
-        count: v.count ?? 0,
-        mean: (v.mean_ms ?? 0).toFixed(2),
-      };
-    });
+  const hitRatePercent = $derived.by(() => {
+    const r = tokenTotals.hitRate;
+    return r >= 0.1 ? (r * 100).toFixed(0) : (r * 100).toFixed(1);
   });
 </script>
 
 <div class="landing">
   {#if rowsLoadError}
-    <div class="err-banner">list fetch failed: {rowsLoadError}</div>
+    <div class="err-banner">{t('home.listFetchFailed', { message: rowsLoadError })}</div>
   {/if}
 
   <!-- ---------- STATUS ---------- -->
   <section class="block status-block">
     <div class="section-head">
-      <h3 class="group-title">status</h3>
+      <h3 class="group-title">{t('home.status')}</h3>
       <span class="sample-tag" class:stalled>
-        {#if stalled}stalled · last poll &gt; 30s{:else}live · last poll OK{/if}
+        {stalled ? t('home.sampleStalled') : t('home.sampleLive')}
       </span>
     </div>
     <div class="metric-row">
       <div class="metric">
-        <div class="m-label">proxy</div>
+        <div class="m-label">{t('home.proxy')}</div>
         <div class="m-value">:7861</div>
       </div>
       <div class="metric">
-        <div class="m-label">api</div>
+        <div class="m-label">{t('home.api')}</div>
         <div class="m-value">:7862</div>
       </div>
       <div class="metric">
-        <div class="m-label">uptime</div>
+        <div class="m-label">{t('home.uptime')}</div>
         <div class="m-value">{uptimeLabel}</div>
       </div>
       <div class="metric">
-        <div class="m-label">traces</div>
-        <div class="m-value">{tracesTotalLabel}</div>
+        <div class="m-label">{t('home.traces')}</div>
+        <div class="m-value m-value-lg">{tracesTotalLabel}</div>
       </div>
       <div class="metric">
-        <div class="m-label">data</div>
-        <div class="m-value">{dataDirLabel}</div>
+        <div class="m-label">{t('home.data')}</div>
+        <div class="m-value m-value-lg">{dataDirLabel}</div>
       </div>
       <div class="metric">
-        <div class="m-label">last write</div>
+        <div class="m-label">{t('home.lastWrite')}</div>
         <div class="m-value">{lastWriteLabel}</div>
       </div>
     </div>
@@ -519,8 +346,8 @@
   <!-- ---------- CAPABILITY ---------- -->
   <section class="block">
     <div class="section-head">
-      <h3 class="group-title">capability</h3>
-      <span class="sample-tag">recognized · last hour</span>
+      <h3 class="group-title">{t('home.capability')}</h3>
+      <span class="sample-tag">{t('home.sampleRecognizedLastHour')}</span>
     </div>
     <div class="chip-row">
       {#each PROTOCOL_CHIPS as chip (chip.key)}
@@ -528,72 +355,28 @@
           class="chip"
           class:lit={recentProtocolHits.has(chip.key)}
           title={recentProtocolHits.has(chip.key)
-            ? 'seen in the last hour'
-            : 'no traces in the last hour'}>{chip.label}</span
+            ? t('home.chipSeenLastHour')
+            : t('home.chipNoTrafficLastHour')}>{chip.label}</span
         >
       {/each}
     </div>
   </section>
 
-  <!-- ---------- NEEDS ATTENTION ---------- -->
-  <section class="block">
-    <div class="section-head">
-      <h3 class="group-title">needs attention</h3>
-      <span class="sample-tag">last 30 min · top {ATTENTION_LIMIT}</span>
-    </div>
-    {#if incidents.length === 0}
-      <div class="empty">No incidents in the last 30 minutes.</div>
-    {:else}
-      <ul class="incidents" role="list">
-        {#each incidents as inc (inc.id)}
-          <li class="incident">
-            <button
-              type="button"
-              class="incident-row"
-              onclick={() => jumpToTrace(inc.id)}
-            >
-              <span class="i-age">{inc._ageLabel}</span>
-              <span class="i-status {statusClass(inc.status)}"
-                >{inc.status ?? '—'}</span
-              >
-              <span class="i-path" title={inc.path ?? ''}
-                >{inc.path ?? '—'}</span
-              >
-              <span class="i-model">{inc.model ?? '—'}</span>
-              <span class="i-dur">{fmtMs(inc._durMs)}</span>
-              <span class="i-key">{shortKey(inc.key_hash)}</span>
-              <span class="i-reasons">
-                {#each inc._reasons as r (r)}
-                  <span
-                    class="reason"
-                    class:r-err={r === '5xx'}
-                    class:r-warn={r === '4xx' || r === 'slow' || r === 'truncated'}
-                    >{r}</span
-                  >
-                {/each}
-              </span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
-
   <!-- ---------- ACTIVE CLIENTS ---------- -->
   <section class="block">
     <div class="section-head">
-      <h3 class="group-title">active clients</h3>
-      <span class="sample-tag">recent 200 requests · top {ACTIVE_CLIENTS_LIMIT}</span>
+      <h3 class="group-title">{t('home.activeClients')}</h3>
+      <span class="sample-tag">{t('home.sampleRecent200TopN', { n: ACTIVE_CLIENTS_LIMIT })}</span>
     </div>
     {#if activeClients.length === 0}
-      <div class="empty">No client_kind in the recent 200 requests.</div>
+      <div class="empty">{t('home.noClientKind')}</div>
     {:else}
       <table class="mono-table clients-table">
         <thead>
           <tr>
-            <th class="col-kind">kind</th>
-            <th class="col-version">version</th>
-            <th class="col-count">trace count</th>
+            <th class="col-kind">{t('home.tableKind')}</th>
+            <th class="col-version">{t('home.tableVersion')}</th>
+            <th class="col-count">{t('home.tableCount')}</th>
           </tr>
         </thead>
         <tbody>
@@ -610,31 +393,29 @@
   </section>
 
   <!-- ---------- TOKEN USAGE ---------- -->
-  <section class="block">
+  <section class="block block-wide-gap">
     <div class="section-head">
-      <h3 class="group-title">token usage</h3>
-      <span class="sample-tag">recent 200 requests · sums</span>
+      <h3 class="group-title">{t('home.tokenUsage')}</h3>
+      <span class="sample-tag">{t('home.sampleRecent200Sums')}</span>
     </div>
     <div class="metric-row">
       <div class="metric">
-        <div class="m-label">prompt</div>
+        <div class="m-label">{t('home.prompt')}</div>
         <div class="m-value">{fmtTokenCount(tokenTotals.prompt)}</div>
       </div>
       <div class="metric">
-        <div class="m-label">completion</div>
+        <div class="m-label">{t('home.completion')}</div>
         <div class="m-value">{fmtTokenCount(tokenTotals.completion)}</div>
       </div>
       <div class="metric">
-        <div class="m-label">cache read</div>
+        <div class="m-label">{t('home.cacheRead')}</div>
         <div class="m-value">
           {fmtTokenCount(tokenTotals.cached)}
-          <span class="m-sub"
-            >hit {(tokenTotals.hitRate * 100).toFixed(tokenTotals.hitRate >= 0.1 ? 0 : 1)}%</span
-          >
+          <span class="m-sub">{t('home.hitRate', { percent: hitRatePercent })}</span>
         </div>
       </div>
       <div class="metric">
-        <div class="m-label">cache creation</div>
+        <div class="m-label">{t('home.cacheCreation')}</div>
         <div class="m-value">{fmtTokenCount(tokenTotals.cacheCreate)}</div>
       </div>
     </div>
@@ -643,9 +424,9 @@
   <!-- ---------- VOLUME sparkline ---------- -->
   <section class="block">
     <div class="section-head">
-      <h3 class="group-title">volume</h3>
+      <h3 class="group-title">{t('home.volume')}</h3>
       <span class="sample-tag"
-        >traces/min · {sparkData.total} in window · peak {sparkData.max}</span
+        >{t('home.sampleVolume', { total: sparkData.total, peak: sparkData.max })}</span
       >
     </div>
     <div class="spark-wrap">
@@ -654,7 +435,7 @@
         viewBox="0 0 {SPARK_WIDTH} {SPARK_HEIGHT}"
         preserveAspectRatio="none"
         role="img"
-        aria-label="traces per minute over the last 60 minutes"
+        aria-label={t('home.sparkAriaLabel')}
       >
         {#each sparkData.bars as bar, i (i)}
           {#if bar.h > 0}
@@ -665,169 +446,157 @@
               height={bar.h}
               class="spark-bar"
             >
-              <title>{bar.count} trace{bar.count === 1 ? '' : 's'}</title>
+              <title>{bar.count}</title>
             </rect>
           {/if}
         {/each}
       </svg>
       <div class="spark-axis">
-        <span>60 min</span>
-        <span>now</span>
+        <span>{t('home.axis60min')}</span>
+        <span>{t('home.axisNow')}</span>
       </div>
     </div>
-  </section>
-
-  <!-- ---------- INTERNAL · healthz (collapsible) ---------- -->
-  <section class="block internal" class:open={internalOpen}>
-    <button
-      type="button"
-      class="internal-toggle"
-      aria-expanded={internalOpen}
-      onclick={() => (internalOpen = !internalOpen)}
-    >
-      <span class="caret" class:active={internalOpen}
-        >{internalOpen ? '▾' : '▸'}</span
-      >
-      <span class="group-title">internal · healthz</span>
-      {#if hasAlert}
-        <span class="alert-tag">attention</span>
-      {/if}
-      {#if healthzLoadError}
-        <span class="err-tag">{healthzLoadError}</span>
-      {/if}
-    </button>
-
-    {#if internalOpen}
-      <div class="internal-body">
-        <div class="internal-cards">
-          {#each healthzCards as card (card.label)}
-            <div
-              class="hcard"
-              class:bad={card.kind === 'bad'}
-              class:warn={card.kind === 'warn'}
-            >
-              <div class="hcard-label">{card.label}</div>
-              <div class="hcard-value">{card.value}</div>
-              <div class="hcard-sub">{card.sub}</div>
-            </div>
-          {/each}
-        </div>
-
-        <h4 class="group-title sub">per-trace timings (ms)</h4>
-        <div class="internal-cards">
-          {#each healthzTimings as t (t.key)}
-            <div class="hcard">
-              <div class="hcard-label">{t.label}</div>
-              <div class="hcard-value">
-                {t.p50} <span class="p50-tag">p50</span>
-              </div>
-              <div class="hcard-sub">
-                p95 {t.p95} · p99 {t.p99} · n {t.count} · mean {t.mean}
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
   </section>
 </div>
 
 <style>
+  /* ---------- outer layout ---------- *
+   *
+   * Wider whitespace between sections per Phase 2 A. var(--space-section)
+   * (32px) is the base gap; the TOKEN USAGE → VOLUME boundary widens to
+   * var(--space-section-wide) (48px) because the two sections read as
+   * different concepts (sums vs. throughput timeline). The wider gap is
+   * applied via `.block-wide-gap + section` so the rule survives even if
+   * sections are reordered.
+   */
   .landing {
     flex: 1;
     overflow: auto;
-    padding: 20px 24px 32px;
+    padding: var(--space-6) var(--space-6) var(--space-8);
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-section);
     min-height: 0;
+  }
+  .block-wide-gap + .block {
+    margin-top: calc(var(--space-section-wide) - var(--space-section));
   }
 
   .err-banner {
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--err);
+    border-radius: var(--radius-md);
     color: var(--err);
     font-family: var(--font-mono);
     font-size: var(--size-meta);
   }
 
-  /* ---------- block frame (hairline border, no card chrome) ---------- */
+  /* ---------- block frame (hairline border, no card chrome) ---------- *
+   *
+   * 6px corners via var(--radius-md) per Phase 1's Vercel-leaning token
+   * delta. No drop shadow, no nested card. The border-only treatment is
+   * load-bearing — adding fills breaks the restraint principle.
+   */
   .block {
     border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     background: var(--surface);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4) var(--space-6);
   }
 
   .section-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
   }
   .group-title {
+    font-family: var(--font-sans);
     font-size: var(--size-label);
     color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    font-weight: 500;
     margin: 0;
   }
   .sample-tag {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--size-label);
     color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .sample-tag.stalled {
     color: var(--err);
   }
   .empty {
     color: var(--fg-dim);
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
     padding: var(--space-2) 0;
   }
 
-  /* ---------- metric row (STATUS + TOKEN USAGE) ---------- */
+  /* ---------- metric row (STATUS + TOKEN USAGE) ---------- *
+   *
+   * Vercel-aesthetic delta: label sits top-left in small uppercase sans;
+   * value sits below right-aligned in sans semibold display size. The
+   * right-alignment is the operator's "都是左对齐很怪" fix — numbers
+   * stick to the right edge of each cell so the eye can scan a column
+   * of values vertically. Display weight (--font-weight-display = 600)
+   * carries the visual weight that mono used to in Phase H.
+   */
   .metric-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: var(--space-6);
   }
   .metric {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-2);
     min-width: 0;
   }
   .m-label {
+    font-family: var(--font-sans);
     font-size: var(--size-label);
     color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    text-align: left;
   }
   .m-value {
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
+    font-family: var(--font-sans);
+    font-size: var(--size-display);
+    font-weight: var(--font-weight-display);
     color: var(--fg);
+    line-height: 1.1;
+    text-align: right;
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    justify-content: flex-end;
+    gap: var(--space-2);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .m-value-lg {
+    font-size: var(--size-display-lg);
+  }
   .m-sub {
     color: var(--fg-dim);
-    font-size: var(--size-label);
+    font-family: var(--font-sans);
+    font-size: var(--size-body);
+    font-weight: 400;
   }
 
   /* ---------- CAPABILITY chips ----------
    *
-   * Per Phase L principle 4, accent must not carry status/presence
-   * semantics. "Lit" here signals "has traffic in the last hour" —
-   * that's a presence signal, not selection — so lit chips read in
-   * bright --fg, dim chips in --fg-dim. Hairline border in both
-   * states; no fills.
+   * Presence signal, not selection — lit reads as bright --fg with a
+   * stronger border, dim reads as --fg-dim with hairline border. Accent
+   * stays out of this strip per the Phase 2 A narrower-accent rule.
+   * Mono kept on chip labels because they're protocol identifiers
+   * (chat / messages / responses / gemini).
    */
   .chip-row {
     display: flex;
@@ -835,112 +604,31 @@
     gap: var(--space-2);
   }
   .chip {
-    padding: 2px 8px;
+    padding: 3px 10px;
     border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     color: var(--fg-dim);
     background: transparent;
     font-family: var(--font-mono);
     font-size: var(--size-meta);
+    transition: color 150ms ease, border-color 150ms ease;
   }
   .chip.lit {
     color: var(--fg);
     border-color: var(--border-strong);
   }
 
-  /* ---------- NEEDS ATTENTION ---------- */
-  .incidents {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .incident + .incident {
-    border-top: 1px solid var(--border);
-  }
-  .incident-row {
-    display: grid;
-    grid-template-columns: 80px 56px 1fr 160px 64px 80px auto;
-    gap: var(--space-3);
-    align-items: center;
-    width: 100%;
-    padding: var(--space-2) 0;
-    background: transparent;
-    border: none;
-    border-left: 2px solid transparent;
-    border-radius: 0;
-    text-align: left;
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
-    color: var(--fg);
-  }
-  .incident-row:hover {
-    border-left-color: var(--border-strong);
-    background: var(--surface-elevated);
-  }
-  .i-age {
-    color: var(--fg-dim);
-  }
-  .i-status {
-    text-align: right;
-    color: var(--fg-muted);
-  }
-  .i-status.st-4 {
-    color: var(--warn);
-  }
-  .i-status.st-5 {
-    color: var(--err);
-  }
-  .i-status.st-2 {
-    color: var(--ok);
-  }
-  .i-path {
-    color: var(--fg);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .i-model {
-    color: var(--fg-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .i-dur {
-    color: var(--fg-muted);
-    text-align: right;
-  }
-  .i-key {
-    color: var(--fg-dim);
-  }
-  .i-reasons {
-    display: inline-flex;
-    gap: var(--space-1);
-    flex-wrap: nowrap;
-  }
-  .reason {
-    padding: 1px 6px;
-    border: 1px solid var(--border);
-    font-size: var(--size-label);
-    color: var(--fg-muted);
-    line-height: 1.4;
-  }
-  .reason.r-warn {
-    color: var(--warn);
-    border-color: var(--warn);
-  }
-  .reason.r-err {
-    color: var(--err);
-    border-color: var(--err);
-  }
-
-  /* ---------- ACTIVE CLIENTS table ---------- */
+  /* ---------- ACTIVE CLIENTS table ---------- *
+   *
+   * Mono for identifier columns (kind / version) and the count — count
+   * column is right-aligned so the column reads as a stack of digits.
+   * Row hover fades the surface up 150ms; no transform-based hover.
+   */
   .mono-table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--font-mono);
-    font-size: var(--size-meta);
+    font-size: var(--size-body);
   }
   .mono-table th,
   .mono-table td {
@@ -949,12 +637,19 @@
     border-bottom: 1px solid var(--border);
   }
   .mono-table thead th {
+    font-family: var(--font-sans);
     font-size: var(--size-label);
-    font-weight: 400;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--fg-muted);
     border-bottom-color: var(--border-strong);
+  }
+  .mono-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+  .mono-table tbody tr:hover {
+    background: var(--surface-elevated);
   }
   .mono-table tbody tr:last-child td {
     border-bottom: none;
@@ -968,17 +663,18 @@
   .clients-table .col-count {
     text-align: right;
     color: var(--fg);
-    width: 100px;
+    width: 120px;
   }
   .clients-table th.col-count {
     text-align: right;
   }
 
-  /* ---------- VOLUME sparkline ----------
+  /* ---------- VOLUME sparkline ---------- *
    *
-   * Bars (preserved from Phase H, per principle 6 "no new sparklines").
-   * --accent fills the bars — this is one of the two places in Landing
-   * where accent is allowed.
+   * Monochrome shift (Phase 2 A R7): bar fill is --fg, not --accent. The
+   * accent is reserved for active state / focus / palette selection now,
+   * so the sparkline reads as quiet operator data rather than decoration.
+   * Opacity 0.6 keeps full bars from feeling heavy against the surface.
    */
   .spark-wrap {
     display: flex;
@@ -991,108 +687,16 @@
     display: block;
   }
   .spark-bar {
-    fill: var(--accent);
-    opacity: 0.7;
+    fill: var(--fg);
+    opacity: 0.6;
   }
   .spark-axis {
     display: flex;
     justify-content: space-between;
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--size-label);
     color: var(--fg-dim);
-  }
-
-  /* ---------- INTERNAL ----------
-   *
-   * Caret takes --accent ONLY when the section is open (the second
-   * allowed accent in Landing). Closed caret stays dim.
-   */
-  .internal {
-    padding: 0;
-  }
-  .internal-toggle {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-2) var(--space-4);
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    text-align: left;
-    cursor: pointer;
-    color: var(--fg-muted);
-    font-family: var(--font-mono);
-    font-size: var(--size-meta);
-  }
-  .internal-toggle:hover {
-    color: var(--fg);
-  }
-  .caret {
-    color: var(--fg-dim);
-    width: 12px;
-    display: inline-block;
-  }
-  .caret.active {
-    color: var(--accent);
-  }
-  .alert-tag {
-    color: var(--warn);
-    font-size: var(--size-label);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .err-tag {
-    color: var(--err);
-    font-family: var(--font-mono);
-    font-size: var(--size-label);
-  }
-  .internal-body {
-    padding: 0 var(--space-4) var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  .group-title.sub {
-    margin-top: var(--space-2);
-  }
-  .internal-cards {
-    display: grid;
-    gap: 1px;
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-    background: var(--border);
-    border: 1px solid var(--border);
-  }
-  .hcard {
-    background: var(--surface);
-    padding: var(--space-2) var(--space-3);
-  }
-  .hcard-label {
-    color: var(--fg-muted);
-    font-size: var(--size-label);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .hcard-value {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    margin-top: 3px;
-    color: var(--fg);
-  }
-  .hcard-sub {
-    color: var(--fg-dim);
-    font-size: var(--size-label);
-    font-family: var(--font-mono);
-    margin-top: 3px;
-  }
-  .hcard.bad .hcard-value {
-    color: var(--err);
-  }
-  .hcard.warn .hcard-value {
-    color: var(--warn);
-  }
-  .p50-tag {
-    color: var(--fg-muted);
-    font-size: var(--size-label);
+    letter-spacing: 0.04em;
   }
 </style>
