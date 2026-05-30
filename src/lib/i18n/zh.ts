@@ -178,7 +178,6 @@ export const zh: Record<string, string> = {
   'settings.backendLastPoll': '最近轮询',
   'settings.aboutWhatLabel': '是什么',
   'settings.aboutWhat': 'api-log-viewer —— api-log 记录器的 Svelte 5 客户端',
-  'settings.aboutUpstreamLabel': '源码',
   'settings.save': '保存',
   'settings.relativeAgo': '{n} 秒前',
   'settings.relativeMinAgo': '{n} 分钟前',

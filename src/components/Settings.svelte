@@ -266,7 +266,6 @@
   // package.json's "version" field when cutting a release.
   const VIEWER_VERSION = '0.1.0';
   const HEALTHZ_URL = api('healthz');
-  const UPSTREAM_URL = 'http://gitea.homelab.lan/leoyun/api-log-viewer';
 </script>
 
 <div class="settings">
@@ -446,13 +445,6 @@
         </div>
       </div>
 
-      <div class="settings-row">
-        <span class="settings-row-label">{t('settings.aboutUpstreamLabel')}</span>
-        <div class="settings-row-helper"></div>
-        <div class="settings-row-control">
-          <a class="mono link" href={UPSTREAM_URL} target="_blank" rel="noopener noreferrer">{UPSTREAM_URL}</a>
-        </div>
-      </div>
     </div>
   </section>
   </div>

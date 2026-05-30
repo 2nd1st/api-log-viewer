@@ -187,7 +187,6 @@ export const en: Record<string, string> = {
   'settings.backendLastPoll': 'last poll',
   'settings.aboutWhatLabel': 'what',
   'settings.aboutWhat': 'api-log-viewer — a Svelte 5 client for the api-log recorder',
-  'settings.aboutUpstreamLabel': 'upstream',
   'settings.save': 'save',
   'settings.relativeAgo': '{n}s ago',
   'settings.relativeMinAgo': '{n}m ago',
