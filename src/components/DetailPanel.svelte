@@ -1,38 +1,10 @@
 <script lang="ts" module>
-  // ---------- shared types ----------
-  //
-  // The detail JSON shape is the one returned by `GET api/traces/:id`.
-  // We keep it loose (Record<string, any>) because the actual tab
-  // bodies (conversation / body / headers / events / session / replay)
-  // are rendered by other components, each of which knows what subset
-  // of the trace shape it consumes.
-
-  export type TraceRow = {
-    id: string;
-    method?: string;
-    path?: string;
-    status?: number | null;
-    ts_start?: string | null;
-    ts_end?: string | null;
-    model?: string | null;
-    prompt_tokens?: number | null;
-    completion_tokens?: number | null;
-    key_hash?: string | null;
-    parent_id?: string | null;
-    [k: string]: any;
-  };
-
-  export type TraceBlob = {
-    req?: { headers?: Record<string, string>; body?: any; body_b64?: string };
-    resp?: {
-      headers?: Record<string, string>;
-      body?: any;
-      body_b64?: string;
-      events?: Array<{ t_delta_ms?: number; event?: string; data?: any }>;
-    };
-  };
-
-  export type TraceDetail = { row: TraceRow; trace?: TraceBlob };
+  // Trace shape types now live in $lib/trace.ts (relocated 2026-05-30).
+  // Re-exported here for back-compat with any importer that still pulls
+  // from this module path — preferred path going forward is
+  // `import type { TraceBlob } from '../lib/trace'`.
+  export type { TraceBlob, TraceDetail, TraceRow } from '../lib/trace';
+  import type { TraceDetail } from '../lib/trace';
 
   // Tab strip kept intentionally small. The events/session/replay tabs
   // were retired 2026-05-29 — events was a low-level firehose nobody
@@ -247,11 +219,12 @@
     </div>
     <div class="tabs">
       {#each tabs as t (t)}
-        <a
+        <button
+          type="button"
           data-tab={t}
           class={t === detailTab ? 'active' : ''}
           onclick={() => selectTab(t)}
-        >{t}</a>
+        >{t}</button>
       {/each}
     </div>
     <div class="body" id="detail-panel">
@@ -345,16 +318,19 @@
     top: 65px;
     z-index: 1;
   }
-  #detail .tabs a {
+  #detail .tabs button {
     padding: 8px 14px;
     color: var(--fg-muted);
+    background: transparent;
+    border: 0;
     border-bottom: 1px solid transparent;
     margin-bottom: -1px;
     cursor: pointer;
     font-size: 12px;
+    font-family: inherit;
   }
-  #detail .tabs a:hover { color: var(--fg-dim); }
-  #detail .tabs a.active {
+  #detail .tabs button:hover { color: var(--fg-dim); }
+  #detail .tabs button.active {
     color: var(--fg);
     border-bottom-color: var(--accent);
   }

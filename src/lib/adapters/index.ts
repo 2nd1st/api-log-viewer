@@ -20,7 +20,7 @@
  */
 
 import type { Block, UnknownBlock } from '../blocks';
-import type { TraceBlob } from '../../components/DetailPanel.svelte';
+import type { TraceBlob } from '../trace';
 
 import { adapt as adaptChat } from './chat';
 import { adapt as adaptMessages } from './messages';

@@ -71,7 +71,7 @@ import type {
   ToolResultBlock,
   UnknownBlock,
 } from '../blocks';
-import type { TraceBlob } from '../../components/DetailPanel.svelte';
+import type { TraceBlob } from '../trace';
 
 // ---------- public entry ----------
 

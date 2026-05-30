@@ -45,17 +45,9 @@ import type {
 // Local types -- intentionally permissive. We're parsing untrusted JSON.
 // ---------------------------------------------------------------------------
 
-type Json = any;
+import type { TraceBlob } from '../trace';
 
-interface TraceBlob {
-  req?: { headers?: Record<string, string>; body?: Json; body_b64?: string };
-  resp?: {
-    headers?: Record<string, string>;
-    body?: Json;
-    body_b64?: string;
-    events?: Array<{ t_delta_ms?: number; event?: string; data?: Json }>;
-  };
-}
+type Json = any;
 
 // ---------------------------------------------------------------------------
 // Helpers
