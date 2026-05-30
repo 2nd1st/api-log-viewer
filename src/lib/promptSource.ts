@@ -10,7 +10,7 @@ export type PromptSource =
   | 'cursor'
   | 'unknown';
 
-export type PromptLayer = 'L1' | 'L2' | 'mixed';
+export type PromptLayer = 'L1' | 'L2' | 'mixed' | 'unknown';
 
 interface PromptSourceResult {
   source: PromptSource;
@@ -18,9 +18,19 @@ interface PromptSourceResult {
   signals: string[];
 }
 
-// L1 signal substrings (case-sensitive where the harness emits them
-// as-is; case-insensitive matching for the prose ones).
-const CODEX_TAGS = ['<personality>', '<values>', '<interaction_style>'];
+// Codex L1 XML-tag signals. Matched case-insensitively because the
+// harness has shipped variants over time; presence of any of these is
+// a strong indicator the text contains the codex vendor harness.
+const CODEX_TAGS = [
+  '<personality>',
+  '<values>',
+  '<interaction_style>',
+  '<escalation>',
+  '<engineering_judgment>',
+  '<output_format>',
+  '<reasoning>',
+  '<general>',
+];
 
 /**
  * classifyPromptSource inspects a system prompt string and returns
@@ -29,24 +39,36 @@ const CODEX_TAGS = ['<personality>', '<values>', '<interaction_style>'];
  * Layer logic:
  *   - 'L1' when only vendor-harness signals match (XML tags etc.).
  *   - 'L2' when only project / user markdown signals match (no XML).
- *   - 'mixed' when both are present — system + developer concatenated.
+ *   - 'mixed' when both XML tags and markdown headers are present —
+ *     a sign of L1 + L2 concatenated into the same prompt slot.
  *
- * Unknown text returns source='unknown'. signals[] always reflects
- * what actually matched so a debug surface can show why.
+ * signals[] always reflects what actually matched so a debug surface
+ * can show why. For codex XML tags the bare tag name (no angle
+ * brackets) is pushed.
  */
 export function classifyPromptSource(text: string): PromptSourceResult {
   const t = text ?? '';
+  const lower = t.toLowerCase();
   const signals: string[] = [];
 
   // ---- L1 signals -----------------------------------------------------
   let l1Source: PromptSource | null = null;
+  let codexXmlHit = false;
 
   for (const tag of CODEX_TAGS) {
-    if (t.includes(tag)) {
-      signals.push(tag);
+    if (lower.includes(tag)) {
+      // Push just the tag name without angle brackets, per spec.
+      signals.push(tag.slice(1, -1));
       l1Source = 'codex';
+      codexXmlHit = true;
     }
   }
+  // Codex XML tags are a strong, unambiguous signal: short-circuit
+  // attribution to codex before any other harness checks can claim it.
+  if (codexXmlHit) {
+    l1Source = 'codex';
+  }
+
   if (/You are Claude/i.test(t)) {
     signals.push('You are Claude');
     l1Source = l1Source ?? 'claude-code';
@@ -64,26 +86,31 @@ export function classifyPromptSource(text: string): PromptSourceResult {
     l1Source = l1Source ?? 'cursor';
   }
 
-  // ---- L2 signal: markdown without XML tags ---------------------------
-  // Heuristic: lines starting with '#' (heading) or '- ' (list) and
-  // no XML-style tag-at-line-start that L1 would emit.
-  const hasMarkdown =
-    /^#{1,6}\s/m.test(t) || /^[-*]\s/m.test(t) || /\n#{1,6}\s/.test(t);
-  const hasXmlTag = /^<[a-zA-Z][\w-]*>/m.test(t);
-  const isL2 = hasMarkdown && !hasXmlTag;
-  if (isL2) signals.push('markdown-no-xml');
+  // ---- L2 signal: markdown headers ------------------------------------
+  // A '#' heading anywhere in the text is the cheap L2/AGENTS.md tell.
+  const hasMarkdownHeader = /^#{1,6}\s/m.test(t) || /\n#{1,6}\s/.test(t);
+  if (hasMarkdownHeader) signals.push('markdown-header');
 
   // ---- Compose result -------------------------------------------------
-  if (l1Source && isL2) {
+  // Per spec, layer is driven by codex XML presence + markdown headers:
+  //   XML  + md → mixed (L1 + L2 concatenated)
+  //   XML  only → L1
+  //   md   only → L2 (user-supplied AGENTS.md style)
+  //   neither   → unknown
+  if (codexXmlHit && hasMarkdownHeader) {
+    return { source: l1Source ?? 'codex', layer: 'mixed', signals };
+  }
+  if (codexXmlHit) {
+    return { source: l1Source ?? 'codex', layer: 'L1', signals };
+  }
+  if (l1Source && hasMarkdownHeader) {
     return { source: l1Source, layer: 'mixed', signals };
   }
   if (l1Source) {
     return { source: l1Source, layer: 'L1', signals };
   }
-  if (isL2) {
-    // Markdown-only with no vendor harness signature — we know it's
-    // L2-shaped but can't attribute the source.
+  if (hasMarkdownHeader) {
     return { source: 'unknown', layer: 'L2', signals };
   }
-  return { source: 'unknown', layer: 'L1', signals };
+  return { source: 'unknown', layer: 'unknown', signals };
 }

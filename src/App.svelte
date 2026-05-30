@@ -43,6 +43,8 @@
   import DetailPanel from './components/DetailPanel.svelte';
   import type { TabBodyCtx } from './components/DetailPanel.svelte';
   import Landing from './components/Landing.svelte';
+  import Export from './components/Export.svelte';
+  import Settings from './components/Settings.svelte';
   import AuthModal from './components/AuthModal.svelte';
 
   import ConversationTab from './components/tabs/ConversationTab.svelte';
@@ -51,7 +53,7 @@
 
   // ---------- top-level state ----------
 
-  type View = 'landing' | 'traces';
+  type View = 'landing' | 'traces' | 'export' | 'settings';
 
   let view = $state<View>('landing');
 
@@ -105,7 +107,7 @@
   // #/dashboard is a legacy alias for #/landing — kept routable so old
   // bookmarks still land somewhere, with a console.warn + replaceState
   // to the canonical route.
-  const KNOWN_VIEWS: readonly View[] = ['landing', 'traces'];
+  const KNOWN_VIEWS: readonly View[] = ['landing', 'traces', 'export', 'settings'];
 
   function applyHash(): void {
     const h = window.location.hash;
@@ -229,6 +231,18 @@
   </section>
   {/if}
 
+  {#if view === 'export'}
+  <section id="export">
+    <Export {authFetch} />
+  </section>
+  {/if}
+
+  {#if view === 'settings'}
+  <section id="settings">
+    <Settings {authFetch} onOpenAuthModal={() => (authModalOpen = true)} />
+  </section>
+  {/if}
+
   {#if view === 'traces'}
   <section id="traces">
     <FilterSidebar
@@ -316,7 +330,9 @@
     min-height: 0;
   }
 
-  #landing {
+  #landing,
+  #export,
+  #settings {
     flex: 1;
     display: flex;
     flex-direction: column;

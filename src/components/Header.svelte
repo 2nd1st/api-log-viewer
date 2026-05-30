@@ -14,7 +14,7 @@
   // callbacks. The <a href="#/..."> tags rely on the App.svelte
   // hashchange listener to drive the actual route change.
 
-  export type View = 'landing' | 'traces';
+  export type View = 'landing' | 'traces' | 'export' | 'settings';
   export type StatusLevel = '' | 'bad' | 'warn';
 
   interface Props {
@@ -52,6 +52,16 @@
       href="#/traces"
       class:active={view === 'traces'}
     >Traces</a>
+    <a
+      data-view="export"
+      href="#/export"
+      class:active={view === 'export'}
+    >Export</a>
+    <a
+      data-view="settings"
+      href="#/settings"
+      class:active={view === 'settings'}
+    >Settings</a>
   </nav>
   <div class="spacer"></div>
   <span
