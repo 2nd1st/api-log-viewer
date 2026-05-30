@@ -203,8 +203,6 @@ export const en: Record<string, string> = {
     'Configure operator-opt-in hooks that mutate or intercept requests / responses.',
   'settings.plugins.addButton': 'Add plugin',
   'settings.plugins.emptyState': 'No plugins configured.',
-  'settings.plugins.restartBanner':
-    'Changes take effect after the backend restarts (no hot-reload in v1).',
   'settings.plugins.sourceYaml': 'yaml',
   'settings.plugins.sourceOverride': 'override',
   'settings.plugins.deleteAllAction': 'Revert to YAML',

@@ -193,7 +193,6 @@ export const zh: Record<string, string> = {
     '配置由操作者主动开启的钩子，可改写或拦截请求 / 响应。',
   'settings.plugins.addButton': '新增插件',
   'settings.plugins.emptyState': '尚未配置插件。',
-  'settings.plugins.restartBanner': '改动需后端重启后生效（v1 不支持热重载）。',
   'settings.plugins.sourceYaml': 'yaml',
   'settings.plugins.sourceOverride': 'override',
   'settings.plugins.deleteAllAction': '恢复 YAML',

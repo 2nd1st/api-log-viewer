@@ -25,11 +25,10 @@
   //   DELETE /api/config/plugins         → revert override, source: yaml
   //   GET    /api/plugins/types          → registered types + descriptions
   //
-  // RESTART SEMANTICS (v0.1): every mutation requires a backend restart
-  // to take effect. The restart banner stays visible whenever at least
-  // one instance exists so the operator never forgets — there is no
-  // dirty-tracking, because we can't distinguish "freshly written, needs
-  // restart" from "matches the running config" without server cooperation.
+  // HOT-RELOAD (W4.2 backend, 2026-05-31): PUT / PATCH / DELETE on
+  // /api/config/plugins swap the live registry atomically. No restart
+  // required; mutations take effect on the next request that flows
+  // through the proxy.
 
   import { onMount } from 'svelte';
   import {
@@ -188,7 +187,6 @@
 
   // ---------- derived ----------
 
-  const showRestartBanner = $derived(instances.length > 0);
   const showRevertButton = $derived(source === 'override');
   const modalOpen = $derived(adding || editing !== null);
 </script>
@@ -211,11 +209,6 @@
     </div>
   </header>
 
-  {#if showRestartBanner}
-    <div class="restart-banner" role="note">
-      {t('settings.plugins.restartBanner')}
-    </div>
-  {/if}
 
   {#if error}
     <div class="error-banner" role="alert">
@@ -336,21 +329,6 @@
     border-radius: var(--radius-md);
     padding: 2px 8px;
     line-height: 1.5;
-  }
-
-  /* Restart banner — neutral, not an error. The operator already knows
-     plugins are restart-gated; this is a reminder, not an alarm. */
-  .restart-banner {
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
-    border-left: 2px solid var(--fg-muted);
-    border-radius: var(--radius-md);
-    padding: var(--space-2) var(--space-3);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    color: var(--fg-muted);
-    line-height: 1.5;
-    margin-bottom: var(--space-3);
   }
 
   .error-banner {
