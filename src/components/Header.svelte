@@ -19,8 +19,19 @@
   //     Inline SVG glyphs only — no icon library.
   //   - CSS uses the Phase L tokens (--fg-muted, --border, --accent,
   //     --size-body, --size-meta, --font-mono).
+  //
+  // Phase 1 i18n additions (2026-05-30):
+  //   - Nav labels and aria/title strings go through t() so they switch
+  //     when the operator flips the language.
+  //   - Small text-only language toggle ("EN" / "中") sits between the
+  //     status pill and the theme toggle, mirroring the theme-toggle
+  //     shape. setLang() persists to localStorage['apilog.lang'].
+  //   - The status pill text itself is built upstream (App / TracesList)
+  //     so we leave its rendering alone here; statusText is still a
+  //     pass-through prop.
 
   import { getTheme, toggleTheme } from '../lib/theme';
+  import { getLang, setLang, t } from '../lib/i18n.svelte';
 
   export type View = 'landing' | 'traces' | 'export' | 'settings';
   export type StatusLevel = '' | 'bad' | 'warn';
@@ -56,22 +67,22 @@
       data-view="landing"
       href="#/landing"
       class:active={view === 'landing'}
-    >Home</a>
+    >{t('ui.nav.home')}</a>
     <a
       data-view="traces"
       href="#/traces"
       class:active={view === 'traces'}
-    >Traces</a>
+    >{t('ui.nav.traces')}</a>
     <a
       data-view="export"
       href="#/export"
       class:active={view === 'export'}
-    >Export</a>
+    >{t('ui.nav.export')}</a>
     <a
       data-view="settings"
       href="#/settings"
       class:active={view === 'settings'}
-    >Settings</a>
+    >{t('ui.nav.settings')}</a>
   </nav>
   <div class="spacer"></div>
   <span
@@ -81,9 +92,16 @@
   >{statusText}</span>
   <button
     type="button"
+    class="lang-toggle"
+    aria-label={t('ui.langToggle')}
+    title={t('ui.langToggle')}
+    onclick={() => { setLang(getLang() === 'en' ? 'zh' : 'en'); }}
+  >{getLang() === 'en' ? 'EN' : '中'}</button>
+  <button
+    type="button"
     class="theme-toggle"
-    aria-label="Toggle theme"
-    title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+    aria-label={t('ui.themeToggle')}
+    title={t('ui.themeToggle')}
     onclick={() => { theme = toggleTheme(); }}
   >
     {#if theme === 'dark'}
@@ -191,6 +209,24 @@
     width: 16px;
     height: 16px;
   }
+
+  /* Language toggle — text-only sibling of .theme-toggle. 10px sans,
+     dim → bright on hover. No border, no background; same 4px hit area
+     so it doesn't visually outweigh the theme glyph next to it. */
+  .lang-toggle {
+    background: transparent;
+    border: 0;
+    color: var(--fg-dim);
+    padding: 4px;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: var(--size-label);
+    line-height: 1;
+    letter-spacing: 0.04em;
+    border-radius: var(--radius-md);
+    transition: color 150ms ease-out;
+  }
+  .lang-toggle:hover { color: var(--fg); }
 
   .icon-btn {
     background: none;

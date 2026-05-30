@@ -12,7 +12,12 @@
  *     bottom of :root so untouched Phase H components keep rendering
  *     while Phase 2 work migrates references. Phase 2 deletes the
  *     alias block once those files use the new names directly.
- *   - Radii capped at 4px (--radius-md). No drop shadows. No nested
+ *   - Phase 1 Vercel-leaning delta (2026-05-30): --radius-md bumped
+ *     4px → 6px; --radius-lg = 8px added for primary cards. New
+ *     spacing tokens (--space-section, --space-section-wide) for the
+ *     wider Home section gaps. New display-number tokens
+ *     (--size-display, --size-display-lg, --font-weight-display) for
+ *     headline metrics in sans semibold. No drop shadows. No nested
  *     cards. No role background fills.
  */
 
@@ -35,7 +40,8 @@
   --err: #f87171;
 
   --radius-sm: 2px;
-  --radius-md: 4px;
+  --radius-md: 6px;               /* Phase 1: was 4px — Vercel-leaning */
+  --radius-lg: 8px;               /* Phase 1: NEW — primary cards (Export, Settings group) */
 
   --space-1: 4px;
   --space-2: 8px;
@@ -43,6 +49,8 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-section: 32px;          /* Phase 1: NEW — between major Home sections */
+  --space-section-wide: 48px;     /* Phase 1: NEW — between dissimilar groups */
 
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -51,6 +59,9 @@
   --size-meta: 11px;              /* mono cells */
   --size-body: 12px;              /* default UI */
   --size-input: 13px;
+  --size-display: 24px;           /* Phase 1: NEW — headline metric numbers */
+  --size-display-lg: 30px;        /* Phase 1: NEW — primary callout numbers */
+  --font-weight-display: 600;     /* Phase 1: NEW — semibold for display numbers */
 
   /* Overlay backdrop used by AuthModal + CommandPalette. */
   --bg-overlay: rgba(10, 10, 11, 0.8);
