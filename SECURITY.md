@@ -41,10 +41,12 @@ These are not vulnerabilities; they are deliberate design choices or
 backend concerns:
 
 - **Captured bearer tokens visible in the viewer.** api-log records
-  upstream traffic verbatim (see backend [PHILOSOPHY.md](https://github.com/xiayangzhang/api-log)
-  no-list). The viewer renders what was captured. Operators who do
-  not want tokens visible should not capture them — that is a backend
-  / pipeline decision, not a viewer concern.
+  upstream traffic verbatim — `Authorization` / `x-api-key` headers
+  land on disk as the client sent them. The viewer renders what was
+  captured. Operators who do not want tokens visible should not
+  capture them; that is a backend / pipeline decision, not a viewer
+  concern. See backend [SECURITY.md](https://github.com/xiayangzhang/api-log/blob/main/SECURITY.md)
+  for the capture-side redaction posture.
 - **Backend auth bypass.** The bearer token is checked by the backend.
   Bypass reports belong to the api-log backend repo's SECURITY.md.
 - **Outdated dependency CVEs without a viewer-reachable code path.**
