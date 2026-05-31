@@ -2,12 +2,12 @@ English | [中文](README.zh.md)
 
 # api-log-viewer: Svelte trace viewer for LLM proxy logs
 
-[![CI](https://github.com/xiayangzhang/api-log-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/xiayangzhang/api-log-viewer/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/xiayangzhang/api-log-viewer)](https://github.com/xiayangzhang/api-log-viewer/releases)
+[![CI](https://github.com/2nd1st/api-log-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/2nd1st/api-log-viewer/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/2nd1st/api-log-viewer)](https://github.com/2nd1st/api-log-viewer/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Bundle size](https://img.shields.io/badge/js%20gzipped-~77%20KB-informational)](#bundle-size)
 
-api-log-viewer is a Svelte 5 browser UI for [api-log](https://github.com/xiayangzhang/api-log)
+api-log-viewer is a Svelte 5 browser UI for [api-log](https://github.com/2nd1st/api-log)
 traces. It reads the api-log HTTP read API, shows recorded LLM requests,
 responses, SSE chunks, tool calls, reasoning content, sessions, and
 replay data, while keeping gateway capture and storage in the separate
@@ -83,7 +83,7 @@ to the backend at `$APILOG_BACKEND` (default `http://127.0.0.1:7862`).
 ### Connect to a backend
 
 Start the api-log backend first (see its
-[Quick start](https://github.com/xiayangzhang/api-log#quick-start)),
+[Quick start](https://github.com/2nd1st/api-log#quick-start)),
 then point the viewer at it:
 
 ```sh
@@ -240,7 +240,7 @@ Internals:
 
 ## Related projects
 
-- [api-log](https://github.com/xiayangzhang/api-log) — Go recording
+- [api-log](https://github.com/2nd1st/api-log) — Go recording
   proxy this viewer reads from. The HTTP read API contract lives in
   `ARCHITECTURE.md § 6` of that repo.
 - [`SECURITY.md`](./SECURITY.md) — viewer-side threat model.
@@ -250,7 +250,7 @@ Internals:
 
 ### Backend + design influence
 
-- [`api-log`](https://github.com/xiayangzhang/api-log) — every
+- [`api-log`](https://github.com/2nd1st/api-log) — every
   surface in this viewer renders something the backend already
   recorded; the read API contract drives the shape of every page.
 - **Svelte 5 (runes)** — module-level `$state` cells made the

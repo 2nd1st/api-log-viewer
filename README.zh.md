@@ -2,12 +2,12 @@
 
 # api-log-viewer: Svelte trace viewer for LLM proxy logs
 
-[![CI](https://github.com/xiayangzhang/api-log-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/xiayangzhang/api-log-viewer/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/xiayangzhang/api-log-viewer)](https://github.com/xiayangzhang/api-log-viewer/releases)
+[![CI](https://github.com/2nd1st/api-log-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/2nd1st/api-log-viewer/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/2nd1st/api-log-viewer)](https://github.com/2nd1st/api-log-viewer/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Bundle size](https://img.shields.io/badge/js%20gzipped-~77%20KB-informational)](#bundle-size)
 
-api-log-viewer 是 [api-log](https://github.com/xiayangzhang/api-log) trace
+api-log-viewer 是 [api-log](https://github.com/2nd1st/api-log) trace
 的 Svelte 5 浏览器 UI。它读取 api-log 的 HTTP read API，展示已录制的 LLM
 请求、响应、SSE chunk、tool call、reasoning 内容、session 与 replay 数据，
 gateway 抓包与存储仍然交给独立的 api-log 后端。
@@ -79,7 +79,7 @@ pnpm dev
 ### Connect to a backend
 
 先启动 api-log 后端（见其
-[Quick start](https://github.com/xiayangzhang/api-log#quick-start)），然
+[Quick start](https://github.com/2nd1st/api-log#quick-start)），然
 后让查看器指向它：
 
 ```sh
@@ -226,7 +226,7 @@ release artifact。见 `.github/workflows/ci.yml`。
 
 ## Related projects
 
-- [api-log](https://github.com/xiayangzhang/api-log) —— 本查看器读取的
+- [api-log](https://github.com/2nd1st/api-log) —— 本查看器读取的
   Go 录制 proxy。其 HTTP read API 契约见仓库内的
   `ARCHITECTURE.md § 6`。
 - [`SECURITY.md`](./SECURITY.md) —— 查看器侧的威胁模型。
@@ -236,7 +236,7 @@ release artifact。见 `.github/workflows/ci.yml`。
 
 ### Backend + design influence
 
-- [`api-log`](https://github.com/xiayangzhang/api-log) —— 这个查看器
+- [`api-log`](https://github.com/2nd1st/api-log) —— 这个查看器
   的每个面板都在渲染后端已经录好的东西；read API 契约决定了每一页的形状。
 - **Svelte 5 (runes)** —— module-level `$state` cell 让 i18n / 主题 /
   认证态这些容易 desync 的小型全局状态不需要 store library 就能写干净。

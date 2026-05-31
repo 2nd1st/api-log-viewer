@@ -45,7 +45,7 @@ backend concerns:
   land on disk as the client sent them. The viewer renders what was
   captured. Operators who do not want tokens visible should not
   capture them; that is a backend / pipeline decision, not a viewer
-  concern. See backend [SECURITY.md](https://github.com/xiayangzhang/api-log/blob/main/SECURITY.md)
+  concern. See backend [SECURITY.md](https://github.com/2nd1st/api-log/blob/main/SECURITY.md)
   for the capture-side redaction posture.
 - **Backend auth bypass.** The bearer token is checked by the backend.
   Bypass reports belong to the api-log backend repo's SECURITY.md.
