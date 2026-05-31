@@ -14,10 +14,29 @@ gateway 抓包与存储仍然交给独立的 api-log 后端。
 
 ## Screenshots
 
-trace 列表、trace detail（Overview / Conversation / Raw 三个 tab）以及
-SSE replay 视图的脱敏截图会随 `v0.1.0` tag 一起放出来。在此之前，跑
-`pnpm dev` 对着任意 api-log 后端就能看到实时 UI；最短路径见下方的
-[Quick start](#quick-start)。
+**Home** —— 聚合仪表盘：trace / 数据 / media 体量、识别到的协议、
+活跃客户端（按 client header 解析）、token 用量、流量曲线。
+
+![Home — aggregate dashboard](docs/screenshots/home.png)
+
+**Traces** —— 列表视图 + 筛选侧栏（status、path 支持 `*` 前缀、
+model、key 前缀、session、since、limit），键盘友好的表格行。点一行
+打开右侧 detail 面板。
+
+![Traces — list + filter sidebar](docs/screenshots/traces.png)
+
+**Trace detail (Overview tab)** —— 请求 / 响应身份信息、token 入 /
+出、耗时、客户端 / key / upstream、内容形状（text / reasoning /
+tool-call 计数）。Conversation 与 Raw tab 在同一面板的相邻 tab。
+
+![Trace detail — Overview tab](docs/screenshots/trace-detail.png)
+
+**Plugins** —— operator opt-in 的 mutate / intercept hook。每个
+实例独立 enable toggle，通过后端 PUT / PATCH / DELETE API 热加载
+（无需重启）。YAML 默认 + runtime override 两层，source pill 表示
+当前行的真值来源。
+
+![Plugins — operator-opt-in mutate / intercept hooks](docs/screenshots/plugins.png)
 
 ## Works with api-log
 

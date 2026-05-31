@@ -15,11 +15,30 @@ api-log backend.
 
 ## Screenshots
 
-Redacted captures of the trace list, the trace detail (Overview /
-Conversation / Raw tabs), and the SSE replay view will land with the
-`v0.1.0` tag. Until then, run `pnpm dev` against any api-log backend
-to see the live UI; the [Quick start](#quick-start) below has the
-shortest path.
+**Home** — aggregate dashboard: capacity, capability badges, active
+clients (resolved from client headers), token-usage sums, traffic
+volume.
+
+![Home — aggregate dashboard](docs/screenshots/home.png)
+
+**Traces** — list view with filter sidebar (status, path with
+`*` prefix, model, key prefix, session, since, limit) + a
+keyboard-friendly row table. Selecting a row opens the detail panel.
+
+![Traces — list + filter sidebar](docs/screenshots/traces.png)
+
+**Trace detail (Overview tab)** — request / response identity, tokens
+in / out, duration, client + key + upstream, content shape (text /
+reasoning / tool-call counts). Conversation + Raw tabs sit alongside.
+
+![Trace detail — Overview tab](docs/screenshots/trace-detail.png)
+
+**Plugins** — operator-opt-in mutate / intercept hooks. Per-instance
+enable toggle, hot-reload via the backend PUT / PATCH / DELETE API
+(no restart). YAML defaults + runtime override layer, source pill
+shows which side currently owns each row.
+
+![Plugins — operator-opt-in mutate / intercept hooks](docs/screenshots/plugins.png)
 
 ## Works with api-log
 
