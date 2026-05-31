@@ -30,6 +30,10 @@ and the ones a security review should focus on — are:
 - **Open redirect via trace `path` / `upstream` fields.** Detail
   panel links built from captured strings must reject non-HTTP
   schemes (`javascript:` / `data:` / `vbscript:`).
+- **Markdown link scheme handling.** Markdown link rendering uses a
+  scheme allowlist (`https?://`, `mailto:`); unknown schemes are
+  stripped, not denied — the link text is preserved but emitted
+  without an `href` so it cannot navigate.
 
 ## Not in scope
 

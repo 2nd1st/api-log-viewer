@@ -43,14 +43,6 @@
   //   first. Click row to re-download (synthesizes a new fetch with the
   //   stored query) and copy the query to clipboard.
   //
-  // i18n FALLBACK:
-  //   Phase 1 installed the export.* keys it knew about; a few new
-  //   strings introduced by this revamp (helper text, "no recent
-  //   exports", etc.) don't have dictionary entries yet. Rather than
-  //   render the raw key as visible text, tt() wraps t() and falls back
-  //   to a local en/zh literal when the dict miss is detected. The
-  //   fallback auto-disables once the dict is filled.
-  //
   // INVENTED prop signature:
   //   - authFetch: same fn the rest of the app uses. Used for the
   //     autocomplete sample, the live count probe, AND the export blob
@@ -65,61 +57,6 @@
   }
 
   const { authFetch }: Props = $props();
-
-  // ---------- local i18n fallback ----------
-  //
-  // The dict ships with a subset of export.* keys. For strings this
-  // revamp introduces (helper text, recent-export microcopy) we keep
-  // local en/zh literals here and fall back to them when t() returns
-  // the key unchanged (the documented i18n-miss signal). Once Phase 1
-  // adds the missing keys, the fallback simply stops firing.
-
-  const LOCAL_FALLBACK_EN: Record<string, string> = {
-    'export.matchingRows': 'matching rows',
-    'export.helper': 'Filters use the same shape as /api/traces.',
-    'export.noRecent': 'No recent exports.',
-    'export.rows': '{n} rows',
-    'export.redownload': 're-download',
-    'export.queryCopied': 'query copied',
-    'export.cardFilters': 'Filters',
-    'export.cardGenerate': 'Generate',
-    // A cap hit means the displayed number is a LOWER bound — true
-    // matches are at least n, not at most n. The display operator is
-    // "≥" in every capped case (operator's own limit OR the /api/traces
-    // 500 ceiling); only the size-hint copy differs.
-    'export.countAtLeast': '≥ {n}',
-    'export.sizeAtLeast': '≥ {size}',
-    'export.sizeHint': '~10kB / row',
-  };
-  const LOCAL_FALLBACK_ZH: Record<string, string> = {
-    'export.matchingRows': '匹配条数',
-    'export.helper': '筛选条件与 /api/traces 一致。',
-    'export.noRecent': '暂无导出记录。',
-    'export.rows': '{n} 条',
-    'export.redownload': '重新下载',
-    'export.queryCopied': '已复制查询',
-    'export.cardFilters': '筛选条件',
-    'export.cardGenerate': '生成',
-    'export.countAtLeast': '≥ {n}',
-    'export.sizeAtLeast': '≥ {size}',
-    'export.sizeHint': '约 10kB / 条',
-  };
-
-  function tt(key: string, params?: Record<string, string | number>): string {
-    const raw = t(key, params);
-    // i18n.svelte.ts returns the key string itself on a miss. That's
-    // the signal: do our own substitution from the local table.
-    if (raw !== key) return raw;
-    const lang = getLang();
-    const table = lang === 'zh' ? LOCAL_FALLBACK_ZH : LOCAL_FALLBACK_EN;
-    const local = table[key];
-    if (!local) return key;
-    if (!params) return local;
-    return local.replace(/\{([a-zA-Z0-9_]+)\}/g, (m, name) => {
-      const v = params[name];
-      return v == null ? m : String(v);
-    });
-  }
 
   // ---------- form state ----------
   //
@@ -306,16 +243,16 @@
   const countDisplay = $derived.by((): string => {
     if (count.kind === 'idle' || count.kind === 'loading') return '—';
     if (count.kind === 'err') return '—';
-    if (count.capped) return tt('export.countAtLeast', { n: count.n });
+    if (count.capped) return t('export.countAtLeast', { n: count.n });
     return String(count.n);
   });
 
   const sizeDisplay = $derived.by((): string => {
     if (count.kind !== 'ok') return '—';
     const bytes = count.n * 10 * 1024;
-    const base = tt('export.estimatedSize', { size: humanBytes(bytes) });
+    const base = t('export.estimatedSize', { size: humanBytes(bytes) });
     // If the count is a floor, the size derived from it is also a floor.
-    return count.capped ? tt('export.sizeAtLeast', { size: base }) : base;
+    return count.capped ? t('export.sizeAtLeast', { size: base }) : base;
   });
 
   // ---------- generate ----------
@@ -337,7 +274,7 @@
       const qsStr = qs.toString();
       const r = await authFetch('api/export?' + qsStr);
       if (!r.ok) {
-        let msg = tt('export.failed', { status: r.status });
+        let msg = t('export.failed', { status: r.status });
         try {
           const j = await r.json();
           if (j && j.message) msg = `${j.error ?? 'error'}: ${j.message}`;
@@ -444,7 +381,7 @@
     try {
       const r = await authFetch('api/export?' + entry.query);
       if (!r.ok) {
-        genError = tt('export.failed', { status: r.status });
+        genError = t('export.failed', { status: r.status });
         return;
       }
       const cd = r.headers.get('Content-Disposition') ?? '';
@@ -494,7 +431,7 @@
   <div class="export-cards">
     <!-- FILTERS CARD -->
     <section class="card filters-card">
-      <h3 class="card-title">{tt('export.cardFilters')}</h3>
+      <h3 class="card-title">{t('export.cardFilters')}</h3>
 
       <div class="form">
         <div class="row">
@@ -631,17 +568,17 @@
 
     <!-- GENERATE CARD -->
     <section class="card generate-card">
-      <h3 class="card-title">{tt('export.cardGenerate')}</h3>
+      <h3 class="card-title">{t('export.cardGenerate')}</h3>
 
       <div class="metric">
-        <div class="metric-label">{tt('export.matchingRows')}</div>
+        <div class="metric-label">{t('export.matchingRows')}</div>
         <div class="metric-value" class:loading={count.kind === 'loading'}>
           {countDisplay}
         </div>
         <div class="metric-sub">
           {sizeDisplay}
           <span class="meta-sep">·</span>
-          <span class="meta-hint">{tt('export.sizeHint')}</span>
+          <span class="meta-hint">{t('export.sizeHint')}</span>
         </div>
       </div>
 
@@ -654,7 +591,7 @@
         {generating ? t('export.generating') : t('export.generateButton')}
       </button>
 
-      <p class="helper">{tt('export.helper')}</p>
+      <p class="helper">{t('export.helper')}</p>
 
       {#if genError}
         <div class="err">{genError}</div>
@@ -669,7 +606,7 @@
     <h3 class="card-title">{t('export.recentExports')}</h3>
 
     {#if recent.length === 0}
-      <div class="recent-empty">{tt('export.noRecent')}</div>
+      <div class="recent-empty">{t('export.noRecent')}</div>
     {:else}
       <ul class="recent-list">
         {#each recent as entry (entry.ts + entry.query)}
@@ -684,7 +621,7 @@
               <span class="num">
                 {entry.rowCount == null
                   ? '—'
-                  : tt('export.rows', { n: entry.rowCount })}
+                  : t('export.rows', { n: entry.rowCount })}
               </span>
               <span class="num">{humanBytes(entry.sizeBytes)}</span>
               <button
@@ -692,14 +629,14 @@
                 class="link"
                 onclick={() => void reDownload(entry)}
               >
-                {tt('export.redownload')}
+                {t('export.redownload')}
               </button>
             </div>
           </li>
         {/each}
       </ul>
       {#if copiedTick > 0}
-        <div class="copied-flash">{tt('export.queryCopied')}</div>
+        <div class="copied-flash">{t('export.queryCopied')}</div>
       {/if}
     {/if}
   </section>

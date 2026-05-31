@@ -141,6 +141,20 @@ export const zh: Record<string, string> = {
   'export.recentExports': '最近导出',
   'export.estimatedSize': '约 {size}',
   'export.preview': '预览',
+  // Phase 2 B 改版前在 Export.svelte 里以 LOCAL_FALLBACK 形式内嵌的文案，
+  // 现集中到 en/zh，作为导出页所有可见字符串的唯一来源。
+  'export.cardFilters': '筛选条件',
+  'export.cardGenerate': '生成',
+  'export.matchingRows': '匹配条数',
+  'export.helper': '筛选条件与 /api/traces 一致。',
+  'export.noRecent': '暂无导出记录。',
+  'export.rows': '{n} 条',
+  'export.redownload': '重新下载',
+  'export.queryCopied': '已复制查询',
+  // 命中上限时显示值是下界（真实条数 ≥ n），由它推出的体积估算同样带 ≥。
+  'export.countAtLeast': '≥ {n}',
+  'export.sizeAtLeast': '≥ {size}',
+  'export.sizeHint': '约 10kB / 条',
 
   // ---------- settings ----------
   'settings.title': '设置',

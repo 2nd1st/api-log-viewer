@@ -147,6 +147,23 @@ export const en: Record<string, string> = {
   'export.recentExports': 'Recent Exports',
   'export.estimatedSize': '≈ {size}',
   'export.preview': 'Preview',
+  // Phase 2 B revamp — copy that used to live inline in Export.svelte
+  // as a LOCAL_FALLBACK table. Hoisted here so en/zh are the single
+  // source of truth for every visible string in the export tab.
+  'export.cardFilters': 'Filters',
+  'export.cardGenerate': 'Generate',
+  'export.matchingRows': 'matching rows',
+  'export.helper': 'Filters use the same shape as /api/traces.',
+  'export.noRecent': 'No recent exports.',
+  'export.rows': '{n} rows',
+  'export.redownload': 're-download',
+  'export.queryCopied': 'query copied',
+  // A cap hit means the displayed count is a LOWER bound (true count
+  // ≥ n). Same "≥" semantic carries to the size estimate when it is
+  // derived from a capped count.
+  'export.countAtLeast': '≥ {n}',
+  'export.sizeAtLeast': '≥ {size}',
+  'export.sizeHint': '~10kB / row',
 
   // ---------- settings (Settings.svelte) ----------
   // Forward-looking keys from the i18n contract — title / defaultFilters
