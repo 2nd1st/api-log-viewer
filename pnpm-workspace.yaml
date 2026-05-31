@@ -1,2 +1,7 @@
+packages:
+  - .
+
+# Build scripts allowed to run on install. pnpm v10+ blocks unknown
+# postinstall scripts by default; opt-in per package.
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
