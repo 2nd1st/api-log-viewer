@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TextBlock } from '../../lib/blocks';
   import { renderMarkdown, looksLikeMarkdown } from '../../lib/markdown';
-  import { hasXmlSections, parseXmlSections } from '../../lib/xmlPrompt';
+  import { hasXmlSections, parseXmlSections, isHarnessTag, extractHarnessMeta } from '../../lib/xmlPrompt';
   import { t } from '../../lib/i18n.svelte';
 
   // Localized role label. The block.role enum is 'user' | 'assistant' |
@@ -43,14 +43,23 @@
 
   // Section identity uses position (`${tag}@${i}`) because tags can repeat.
   // Open-set tracks which section bodies are currently rendered. Default:
-  // only the first section is open. We don't reset this when visibleText
-  // changes (collapse/expand toggle) — operator's choices persist.
+  // first NON-harness section is open (harness blocks like
+  // skills_instructions / available_skills / system-reminder stay collapsed
+  // by default because they're scaffolding noise hiding the real prompt).
+  // We don't reset this when visibleText changes (collapse/expand toggle)
+  // — operator's choices persist.
   let openSections = $state<Set<string>>(new Set<string>());
   let openInitialized = $state(false);
   $effect(() => {
     if (!openInitialized && xmlSections.length > 0) {
       const initial = new Set<string>();
-      initial.add(`${xmlSections[0].tag}@0`);
+      const firstNonHarness = xmlSections.findIndex((s) => !isHarnessTag(s.tag));
+      if (firstNonHarness >= 0) {
+        const s = xmlSections[firstNonHarness];
+        initial.add(`${s.tag}@${firstNonHarness}`);
+      }
+      // If every section is harness, leave the set empty — operator has to
+      // expand explicitly. That's the point.
       openSections = initial;
       openInitialized = true;
     }
@@ -93,7 +102,9 @@
           {@const key = `${section.tag}@${i}`}
           {@const open = openSections.has(key)}
           {@const lc = sectionLineCount(section.body)}
-          <div class="xml-section">
+          {@const harnessMeta = extractHarnessMeta(section.tag, section.body)}
+          {@const harness = isHarnessTag(section.tag)}
+          <div class="xml-section" class:xml-harness={harness}>
             <button
               type="button"
               class="xml-head"
@@ -102,7 +113,9 @@
             >
               <span class="xml-marker">{open ? '▾' : '▸'}</span>
               <span class="xml-tag">{section.tag}</span>
-              <span class="xml-size">{lc === 1 ? t('blocks.lineCountOne', { n: lc }) : t('blocks.lineCountMany', { n: lc })}</span>
+              <span class="xml-size">
+                {#if harnessMeta}{harnessMeta} · {/if}{lc === 1 ? t('blocks.lineCountOne', { n: lc }) : t('blocks.lineCountMany', { n: lc })}
+              </span>
             </button>
             {#if open}
               <div class="xml-body md">{@html renderMarkdown(section.body)}</div>

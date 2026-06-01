@@ -13,10 +13,52 @@ interface XmlSection {
 // is done by lowercasing when comparing closers.
 const OPEN_TAG_RE = /^[ \t]*<([a-zA-Z][\w-]*)>[ \t]*$/gm;
 
+// Known agent-harness injection tags. When one of these appears the
+// renderer should always collapse the block by default, even when
+// it's the only XML section in the prompt — the harness scaffolding
+// is noise that hides the actual user intent below it.
+const HARNESS_TAGS: ReadonlySet<string> = new Set([
+  'skills_instructions',
+  'available_skills',
+  'available_tools',
+  'system-reminder',
+  'environment_details',
+  'environment_context',
+  'tool_definitions',
+]);
+
+export function isHarnessTag(tag: string): boolean {
+  return HARNESS_TAGS.has(tag.toLowerCase());
+}
+
+/**
+ * extractHarnessMeta returns a short count badge for a harness
+ * section (e.g. "30 skills" for an available_skills block, "12
+ * tools" for available_tools). Returns null when the tag has no
+ * known counter heuristic — the caller falls back to the generic
+ * line-count label.
+ */
+export function extractHarnessMeta(tag: string, body: string): string | null {
+  const t = tag.toLowerCase();
+  const b = body ?? '';
+  if (t === 'available_skills' || t === 'skills_instructions') {
+    const matches = b.match(/<skill\b/gi);
+    const n = matches ? matches.length : 0;
+    if (n > 0) return n === 1 ? '1 skill' : `${n} skills`;
+  }
+  if (t === 'available_tools' || t === 'tool_definitions') {
+    const matches = b.match(/<tool\b/gi);
+    const n = matches ? matches.length : 0;
+    if (n > 0) return n === 1 ? '1 tool' : `${n} tools`;
+  }
+  return null;
+}
+
 /**
  * hasXmlSections returns true when text contains ≥2 top-level
- * line-anchored opening tags. Used by callers to decide whether to
- * route through the XML renderer at all.
+ * line-anchored opening tags, OR ≥1 known harness tag (which is
+ * always worth collapsing on its own). Used by callers to decide
+ * whether to route through the XML renderer at all.
  */
 export function hasXmlSections(text: string): boolean {
   const t = text ?? '';
@@ -24,8 +66,10 @@ export function hasXmlSections(text: string): boolean {
   let count = 0;
   // Reset lastIndex because OPEN_TAG_RE is a /g regex shared across calls.
   OPEN_TAG_RE.lastIndex = 0;
-  while (OPEN_TAG_RE.exec(t) !== null) {
+  let m: RegExpExecArray | null;
+  while ((m = OPEN_TAG_RE.exec(t)) !== null) {
     count++;
+    if (isHarnessTag(m[1])) return true;
     if (count >= 2) return true;
   }
   return false;
