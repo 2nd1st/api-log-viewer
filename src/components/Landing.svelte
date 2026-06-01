@@ -258,9 +258,20 @@
 
   // ---------- TOKEN USAGE ----------
   //
-  // Four sums over the 200-row sample. Cache hit-rate = cached_tokens
-  // sum / prompt_tokens sum, rendered alongside the CACHE READ value
-  // in muted sans (it's a ratio, not a signal).
+  // Four sums over the 200-row sample. Hit rate is the share of
+  // INPUT tokens that came from the prompt cache.
+  //
+  // Protocol-aware denominator: OpenAI's prompt_tokens already INCLUDES
+  // cached_tokens (cached is a subset of prompt), so cached/prompt is
+  // the natural rate. Anthropic's input_tokens is FRESH-only (cache
+  // reads + cache creation are billed separately), so total input is
+  // prompt + cached + cacheCreate; cached/prompt can exceed 100% there
+  // and is meaningless as a rate.
+  //
+  // Heuristic: when cached > prompt the trace must be Anthropic-style
+  // (OpenAI can never have cached > prompt by definition); use the
+  // Anthropic denominator. The fix matters as long as a single row in
+  // the 200-sample sum is Anthropic-heavy.
 
   const tokenTotals = $derived.by(() => {
     let prompt = 0;
@@ -273,7 +284,10 @@
       cached += Number(r.cached_tokens ?? 0) || 0;
       cacheCreate += Number(r.cache_creation_tokens ?? 0) || 0;
     }
-    const hitRate = prompt > 0 ? cached / prompt : 0;
+    const denom = cached > prompt
+      ? prompt + cached + cacheCreate  // Anthropic-style: prompt = fresh only
+      : prompt;                         // OpenAI-style: prompt includes cached
+    const hitRate = denom > 0 ? cached / denom : 0;
     return { prompt, completion, cached, cacheCreate, hitRate };
   });
 
