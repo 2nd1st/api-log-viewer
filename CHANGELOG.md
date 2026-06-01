@@ -7,6 +7,14 @@ All notable changes to this project will be documented here. Format:
 ## [Unreleased]
 
 ### Added
+- **Storage retention surface** (matches api-log v0.1.1 backend):
+  Landing STATUS strip's `data` cell gains a state badge (ok /
+  warning / critical) when the backend has retention configured.
+  Settings adds a new **Storage** card with `max_bytes` /
+  `max_age_days` / `warn_at_percent` inputs that GET + PUT
+  `/api/config/retention`. Both knobs zero surfaces a "disabled"
+  status row; 503 from a coord-less backend renders the card with
+  a helpful hint. i18n strings for both languages.
 
 ### Changed
 

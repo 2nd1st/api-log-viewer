@@ -99,9 +99,23 @@
     total_media_files?: number;
   }
 
+  // Storage block — surfaced by backend v0.1.1+ when the storage
+  // coordinator is wired. All fields optional so older backends (or
+  // tests with a nil coord) render as no-storage-info without crashing
+  // the strip.
+  interface HealthzStorage {
+    data_dir_bytes?: number;
+    max_bytes?: number;
+    max_age_days?: number;
+    usage_pct?: number;
+    state?: 'pending' | 'disabled' | 'ok' | 'warning' | 'critical';
+    engine_running?: boolean;
+  }
+
   interface Healthz {
     uptime_seconds: number;
     counters?: HealthzCounters;
+    storage?: HealthzStorage;
   }
 
   let healthz = $state<Healthz | null>(null);
@@ -162,6 +176,18 @@
     const n = healthz?.counters?.total_media_files;
     if (n == null) return '—';
     return n.toLocaleString();
+  });
+
+  // Storage state — only shown when retention is configured (state is
+  // 'ok' / 'warning' / 'critical'). 'disabled' / 'pending' / absent
+  // backend (no storage block) all hide the badge so the STATUS strip
+  // stays uncluttered for adopters who haven't opted into retention.
+  const storageStateLabel = $derived.by(() => {
+    const s = healthz?.storage?.state;
+    if (!s || s === 'disabled' || s === 'pending') return null;
+    const pct = healthz?.storage?.usage_pct;
+    if (pct == null) return null;
+    return { state: s, pct };
   });
 
   // MEDIA subline: replace the redundant "{n} files" value with an average
@@ -367,6 +393,13 @@
         <div class="m-label">{t('home.data')}</div>
         <div class="m-value m-value-lg">{dataDirLabel}</div>
         <div class="cell-sub">{t('home.dataRate', { rate: dataRateLabel })}</div>
+        {#if storageStateLabel}
+          <div
+            class="storage-badge storage-{storageStateLabel.state}"
+            title={t('home.storageBadgeTitle', { pct: storageStateLabel.pct })}>
+            {t(`home.storageState.${storageStateLabel.state}`)} · {storageStateLabel.pct}%
+          </div>
+        {/if}
       </div>
       <div class="status-cell">
         <div class="m-label">{t('home.media')}</div>
@@ -622,6 +655,32 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Storage-state badge — only shown when retention is configured.
+     Re-uses the muted-text colour by default; the .storage-warning and
+     .storage-critical modifiers lift it to a more visible tone without
+     pulling in a new accent.
+   */
+  .storage-badge {
+    align-self: flex-end;
+    font-family: var(--font-mono);
+    font-size: var(--size-meta);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    background: var(--surface);
+    line-height: 1.2;
+  }
+  .storage-warning {
+    color: var(--fg);
+    border-color: var(--fg-dim);
+  }
+  .storage-critical {
+    color: var(--surface);
+    background: var(--fg);
+    border-color: var(--fg);
   }
 
   /* ---------- metric row (TOKEN USAGE) ---------- *

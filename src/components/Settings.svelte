@@ -198,6 +198,143 @@
     }
   }
 
+  // ---------- STORAGE: retention (backend, v0.1.1) ----------
+  //
+  // GET /api/config/retention → { max_bytes, max_age_days, warn_at_percent, source }
+  // PUT /api/config/retention { max_bytes, max_age_days, warn_at_percent } persists
+  // to runtime_overrides.json and updates the in-memory coordinator.
+  //
+  // Both knobs zero means "engine still runs, never deletes" — the
+  // documented disable path; we surface it explicitly so an operator
+  // who set everything to zero sees "Retention disabled" instead of
+  // wondering why nothing's being evicted.
+  //
+  // 503 indicates the backend started without StorageCoord (older
+  // build or unusual config); we render the controls disabled with a
+  // hint pointing at the upgrade.
+
+  type RetentionCfgState =
+    | { kind: 'idle' }
+    | { kind: 'loading' }
+    | { kind: 'error'; message: string }
+    | { kind: 'unavailable' }
+    | { kind: 'ready'; maxBytes: number; maxAgeDays: number; warnAtPercent: number; source: string };
+
+  let retentionCfg = $state<RetentionCfgState>({ kind: 'idle' });
+  let retentionDraft = $state<{ maxBytes: string; maxAgeDays: string; warnAtPercent: string }>({
+    maxBytes: '0',
+    maxAgeDays: '0',
+    warnAtPercent: '80',
+  });
+  let retentionSaving = $state<boolean>(false);
+  let retentionSaveError = $state<string | null>(null);
+  let retentionHintVisible = $state<boolean>(false);
+  let retentionHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function loadRetentionCfg() {
+    retentionCfg = { kind: 'loading' };
+    try {
+      const r = await authFetch('api/config/retention');
+      if (r.status === 503) {
+        retentionCfg = { kind: 'unavailable' };
+        return;
+      }
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as {
+        max_bytes?: number;
+        max_age_days?: number;
+        warn_at_percent?: number;
+        source?: string;
+      };
+      const next = {
+        maxBytes: typeof j.max_bytes === 'number' ? j.max_bytes : 0,
+        maxAgeDays: typeof j.max_age_days === 'number' ? j.max_age_days : 0,
+        warnAtPercent: typeof j.warn_at_percent === 'number' ? j.warn_at_percent : 80,
+        source: typeof j.source === 'string' ? j.source : 'yaml',
+      };
+      retentionCfg = { kind: 'ready', ...next };
+      retentionDraft = {
+        maxBytes: String(next.maxBytes),
+        maxAgeDays: String(next.maxAgeDays),
+        warnAtPercent: String(next.warnAtPercent),
+      };
+    } catch (e: any) {
+      retentionCfg = { kind: 'error', message: e?.message ?? String(e) };
+    }
+  }
+
+  // saveRetention validates the draft then PUTs. We do client-side
+  // validation only to avoid round-tripping for obvious typos — the
+  // backend re-validates the same way storage.UpdateConfig does and
+  // is the source of truth.
+  async function saveRetention() {
+    if (retentionCfg.kind !== 'ready') return;
+    retentionSaveError = null;
+    const maxBytes = Number(retentionDraft.maxBytes);
+    const maxAgeDays = Number(retentionDraft.maxAgeDays);
+    const warnAtPercent = Number(retentionDraft.warnAtPercent);
+    if (!Number.isFinite(maxBytes) || maxBytes < 0) {
+      retentionSaveError = t('settings.retentionBadMaxBytes');
+      return;
+    }
+    if (!Number.isInteger(maxAgeDays) || maxAgeDays < 0) {
+      retentionSaveError = t('settings.retentionBadMaxAgeDays');
+      return;
+    }
+    if (!Number.isInteger(warnAtPercent) || warnAtPercent < 0 || warnAtPercent > 100) {
+      retentionSaveError = t('settings.retentionBadWarnAt');
+      return;
+    }
+    retentionSaving = true;
+    try {
+      const r = await authFetch('api/config/retention', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_bytes: Math.floor(maxBytes),
+          max_age_days: maxAgeDays,
+          warn_at_percent: warnAtPercent,
+        }),
+      });
+      if (!r.ok) {
+        const errBody = await r.json().catch(() => null);
+        throw new Error(errBody?.detail || String(r.status));
+      }
+      const j = (await r.json()) as {
+        max_bytes?: number;
+        max_age_days?: number;
+        warn_at_percent?: number;
+        source?: string;
+      };
+      retentionCfg = {
+        kind: 'ready',
+        maxBytes: typeof j.max_bytes === 'number' ? j.max_bytes : 0,
+        maxAgeDays: typeof j.max_age_days === 'number' ? j.max_age_days : 0,
+        warnAtPercent: typeof j.warn_at_percent === 'number' ? j.warn_at_percent : 80,
+        source: typeof j.source === 'string' ? j.source : 'override',
+      };
+      retentionHintVisible = true;
+      if (retentionHintTimer) clearTimeout(retentionHintTimer);
+      retentionHintTimer = setTimeout(() => {
+        retentionHintVisible = false;
+      }, 1500);
+    } catch (e: any) {
+      retentionSaveError = e?.message ?? String(e);
+    } finally {
+      retentionSaving = false;
+    }
+  }
+
+  // retentionIsDisabled — both knobs zero means "engine on, no policy"
+  // (storage.UpdateConfig clears the retention pointer). Surface that
+  // explicitly in the card so operators don't think a 0-on-both setting
+  // is broken.
+  const retentionIsDisabled = $derived(
+    retentionCfg.kind === 'ready' &&
+      retentionCfg.maxBytes === 0 &&
+      retentionCfg.maxAgeDays === 0,
+  );
+
   // ---------- DEFAULT FILTERS: reset ----------
 
   function resetDefaults() {
@@ -232,6 +369,9 @@
     // Backend-connected default-filters row — failures surface inline
     // (404 -> backend does not support media config yet; non-fatal).
     void loadMediaCfg();
+    // v0.1.1 retention. 503 = backend without StorageCoord; surface
+    // the controls as disabled with a helpful hint.
+    void loadRetentionCfg();
     return () => window.removeEventListener('focus', onFocus);
   });
 
@@ -396,7 +536,110 @@
     </div>
   </section>
 
-  <!-- 3. AUTH -->
+  <!-- 3. STORAGE (retention; v0.1.1+) -->
+  <section class="card">
+    <header class="card-head">
+      <h3>{t('settings.storage')}</h3>
+      <p class="sub">{t('settings.storageNote')}</p>
+    </header>
+
+    <div class="rows">
+      {#if retentionCfg.kind === 'loading' || retentionCfg.kind === 'idle'}
+        <div class="settings-row">
+          <span class="settings-row-label">{t('settings.retentionLoading')}</span>
+          <div class="settings-row-helper"></div>
+          <div class="settings-row-control"></div>
+        </div>
+      {:else if retentionCfg.kind === 'unavailable'}
+        <div class="settings-row">
+          <span class="settings-row-label">{t('settings.retentionUnavailable')}</span>
+          <div class="settings-row-helper">{t('settings.retentionUnavailableNote')}</div>
+          <div class="settings-row-control"></div>
+        </div>
+      {:else if retentionCfg.kind === 'error'}
+        <div class="settings-row">
+          <span class="settings-row-label">{t('settings.retentionLoadError')}</span>
+          <div class="settings-row-helper">{retentionCfg.message}</div>
+          <div class="settings-row-control">
+            <button type="button" class="btn" onclick={() => loadRetentionCfg()}>{t('settings.retry')}</button>
+          </div>
+        </div>
+      {:else}
+        {#if retentionIsDisabled}
+          <div class="settings-row">
+            <span class="settings-row-label">{t('settings.retentionStatus')}</span>
+            <div class="settings-row-helper">{t('settings.retentionDisabledNote')}</div>
+            <div class="settings-row-control">
+              <span class="mono dim">{t('settings.retentionDisabled')}</span>
+            </div>
+          </div>
+        {/if}
+
+        <div class="settings-row">
+          <label for="settings-retention-max-bytes" class="settings-row-label">{t('settings.retentionMaxBytes')}</label>
+          <div class="settings-row-helper">{t('settings.retentionMaxBytesNote')}</div>
+          <div class="settings-row-control">
+            <input
+              id="settings-retention-max-bytes"
+              type="number"
+              min="0"
+              step="1"
+              class="settings-input"
+              bind:value={retentionDraft.maxBytes} />
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label for="settings-retention-max-age" class="settings-row-label">{t('settings.retentionMaxAgeDays')}</label>
+          <div class="settings-row-helper">{t('settings.retentionMaxAgeDaysNote')}</div>
+          <div class="settings-row-control">
+            <input
+              id="settings-retention-max-age"
+              type="number"
+              min="0"
+              step="1"
+              class="settings-input"
+              bind:value={retentionDraft.maxAgeDays} />
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label for="settings-retention-warn-at" class="settings-row-label">{t('settings.retentionWarnAt')}</label>
+          <div class="settings-row-helper">{t('settings.retentionWarnAtNote')}</div>
+          <div class="settings-row-control">
+            <input
+              id="settings-retention-warn-at"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              class="settings-input"
+              bind:value={retentionDraft.warnAtPercent} />
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-row-label">{t('settings.retentionSave')}</span>
+          <div class="settings-row-helper">
+            {#if retentionSaveError}
+              <span class="settings-error">{retentionSaveError}</span>
+            {:else if retentionHintVisible}
+              <span class="dim">{t('settings.retentionSaved')}</span>
+            {:else}
+              <span class="mono dim source">{t('settings.retentionSource', { source: retentionCfg.source })}</span>
+            {/if}
+          </div>
+          <div class="settings-row-control">
+            <button type="button" class="btn" onclick={saveRetention} disabled={retentionSaving}>
+              {retentionSaving ? t('settings.retentionSaving') : t('settings.retentionSaveButton')}
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </section>
+
+  <!-- 4. AUTH -->
   <section class="card">
     <header class="card-head">
       <h3>{t('settings.auth')}</h3>
@@ -418,7 +661,7 @@
     </div>
   </section>
 
-  <!-- 4. ABOUT -->
+  <!-- 5. ABOUT -->
   <section class="card">
     <header class="card-head">
       <h3>{t('settings.about')}</h3>
@@ -562,6 +805,7 @@
 
   /* ---------- form controls ---------- */
   .settings-row-control input[type="text"],
+  .settings-row-control input[type="number"],
   .settings-row-control select {
     background: var(--bg);
     color: var(--fg);
@@ -576,8 +820,17 @@
     transition: border-color 150ms ease;
   }
   .settings-row-control input[type="text"]:focus,
+  .settings-row-control input[type="number"]:focus,
   .settings-row-control select:focus {
     border-color: var(--accent);
+  }
+  .settings-input {
+    width: 200px;
+  }
+  .settings-error {
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
 
   /* Outline buttons — same shape as FilterSidebar Apply. */
