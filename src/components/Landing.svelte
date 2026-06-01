@@ -205,6 +205,7 @@
     { label: 'chat', key: 'openai_chat' },
     { label: 'messages', key: 'anthropic_messages' },
     { label: 'responses', key: 'openai_responses' },
+    { label: 'images', key: 'openai_images' },
     { label: 'gemini', key: 'google_gemini' },
   ];
 

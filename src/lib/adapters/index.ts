@@ -25,6 +25,7 @@ import type { TraceBlob } from '../trace';
 import { adapt as adaptChat } from './chat';
 import { adapt as adaptMessages } from './messages';
 import { adapt as adaptResponses } from './responses';
+import { adapt as adaptImages } from './images';
 import { adapt as adaptGemini } from './gemini';
 
 /**
@@ -35,6 +36,7 @@ export type Protocol =
   | 'openai_chat'
   | 'anthropic_messages'
   | 'openai_responses'
+  | 'openai_images'
   | 'google_gemini'
   | 'unknown';
 
@@ -43,6 +45,7 @@ export function detectProtocol(path: string | null | undefined): Protocol {
   if (p.indexOf('/v1/chat/completions') !== -1) return 'openai_chat';
   if (p.indexOf('/v1/messages') !== -1) return 'anthropic_messages';
   if (p.indexOf('/v1/responses') !== -1) return 'openai_responses';
+  if (p.indexOf('/v1/images/') !== -1) return 'openai_images';
   if (
     p.indexOf(':generateContent') !== -1 ||
     p.indexOf(':streamGenerateContent') !== -1 ||
@@ -67,6 +70,8 @@ export function adapt(path: string | null | undefined, traceBlob: TraceBlob | nu
       return adaptMessages(p, tb);
     case 'openai_responses':
       return adaptResponses(p, tb);
+    case 'openai_images':
+      return adaptImages(p, tb);
     case 'google_gemini':
       return adaptGemini(p, tb);
     default:
