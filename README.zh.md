@@ -7,10 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Bundle size](https://img.shields.io/badge/js%20gzipped-~77%20KB-informational)](#bundle-size)
 
-api-log-viewer 是 [api-log](https://github.com/2nd1st/api-log) trace
-的 Svelte 5 浏览器 UI。它读取 api-log 的 HTTP read API，展示已录制的 LLM
-请求、响应、SSE chunk、tool call、reasoning 内容、session 与 replay 数据，
-gateway 抓包与存储仍然交给独立的 api-log 后端。
+api-log-viewer 是一个面向 LLM 网关日志的 Svelte 5 SPA trace 查看器。它跟 [api-log](https://github.com/2nd1st/api-log) 配套，渲染录制下来的 OpenAI Chat、Anthropic Messages、Responses、Gemini 流量。设计上是一个前端而不是 THE 前端 —— 后续也可以对接到兼容的 JSONL / SQLite trace 存储。跑 sub2api、CLIProxyAPI（CPA）、new-api 的运维可以用它查看请求、响应、SSE chunk、tool call、reasoning 内容、session 和 replay 数据。
+
+**后端录制器：** [api-log](https://github.com/2nd1st/api-log) —— Go HTTP 录制 proxy，把 OpenAI-compatible、Anthropic Messages、Responses、Gemini 网关流量录到 JSONL + SQLite。
 
 ## Screenshots
 

@@ -7,11 +7,9 @@ English | [中文](README.zh.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Bundle size](https://img.shields.io/badge/js%20gzipped-~77%20KB-informational)](#bundle-size)
 
-api-log-viewer is a Svelte 5 browser UI for [api-log](https://github.com/2nd1st/api-log)
-traces. It reads the api-log HTTP read API, shows recorded LLM requests,
-responses, SSE chunks, tool calls, reasoning content, sessions, and
-replay data, while keeping gateway capture and storage in the separate
-api-log backend.
+api-log-viewer is a Svelte 5 SPA trace viewer for LLM gateway logs. It pairs with [api-log](https://github.com/2nd1st/api-log) to render recorded OpenAI Chat, Anthropic Messages, Responses, and Gemini traffic. Designed as a frontend rather than THE frontend — operators can point it at any compatible JSONL or SQLite-backed trace store. Useful for stacks running sub2api, CLIProxyAPI (CPA), or new-api to inspect requests, responses, SSE chunks, tool calls, reasoning content, sessions, and replay data.
+
+**Backend recorder:** [api-log](https://github.com/2nd1st/api-log) — Go HTTP recording proxy that captures OpenAI-compatible, Anthropic Messages, Responses, and Gemini gateway traffic into JSONL + SQLite.
 
 ## Screenshots
 
