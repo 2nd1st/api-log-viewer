@@ -1,0 +1,21 @@
+{
+  "name": "api-log-viewer",
+  "short_name": "api-log",
+  "description": "Svelte 5 SPA trace viewer for api-log and pluggable LLM gateway logs",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0e6d8",
+  "theme_color": "#264848",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
