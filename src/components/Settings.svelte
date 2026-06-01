@@ -1,17 +1,17 @@
 <script lang="ts">
   // Settings — viewer-side preferences + token surface + about.
   //
-  // PHILOSOPHY (viewer/PHILOSOPHY.md + Phase R7):
+  // Shape:
   //   - "It is not THE frontend; it is A frontend." Composable, not
-  //     authoritative. Plugin/gate/redact config does NOT live here —
-  //     that's a backend YAML concern (principle 6).
-  //   - Operational, not analytics-heavy. Phase R7 narrows the page:
-  //     drop the live healthz counters (uptime/appended/drops/data-dir/
-  //     last-poll) — that surface duplicates what CPA/sub2gpt already
-  //     renders. Keep About → version + healthz endpoint URL only.
+  //     authoritative. Plugin / gate / redact config does NOT live
+  //     here — that's a backend YAML concern.
+  //   - Operational, not analytics-heavy. No live healthz counters
+  //     (uptime / appended / drops / data-dir / last-poll) — that
+  //     surface duplicates what the upstream gateway's own dashboard
+  //     already renders. Keep About → version + healthz endpoint URL.
   //   - Single accent (--accent, teal-300) reserved for active state,
   //     selected row, and focus ring ONLY. Toggle on-state uses
-  //     high-contrast var(--fg) per the Vercel-leaning delta, NOT accent.
+  //     high-contrast var(--fg), NOT accent.
   //   - i18n: every visible string goes through t(). The dictionaries
   //     (en.ts / zh.ts) are frozen for this phase; on a missing key
   //     t() returns the key string itself which would surface as

@@ -9,7 +9,7 @@
 //   npx tsx src/lib/promptSource.test.ts
 //
 // Each case carries a short comment naming the real shape it
-// represents (sub2api fixture id or vendor harness style).
+// represents (reference fixture shape or vendor harness style).
 
 import {
   extractProjectContext,
@@ -48,14 +48,14 @@ function check(name: string, got: unknown, want: unknown): void {
 
 const ctxCases: Case<string, ProjectContext | null>[] = [
   {
-    // Shape: Claude Code user-turn system reminder (the actual
-    // injection format the harness uses to drop CLAUDE.md content
-    // into the prompt — see this very task's prompt).
+    // Shape: Claude Code user-turn system reminder — the injection
+    // format the harness uses to drop CLAUDE.md content into the
+    // prompt.
     name: 'CLAUDE.md path-prefixed ref + heading on next line',
     input:
-      'Contents of /Volumes/leoyun/.claude/CLAUDE.md (project instructions, checked into the codebase):\n\n# Leo\'s External Drive — /Volumes/leoyun/\n\n## 语言',
+      'Contents of /Users/example/.claude/CLAUDE.md (project instructions, checked into the codebase):\n\n# example-project\n\n## Section',
     expect: {
-      name: "Leo's External Drive — /Volumes/leoyun/",
+      name: 'example-project',
       source: 'claude-md',
     },
   },
@@ -70,8 +70,8 @@ const ctxCases: Case<string, ProjectContext | null>[] = [
     // Restraint check: a *prose* mention of CLAUDE.md must NOT trigger
     // the claude-md branch, because the next heading ("# Executing
     // actions with care") is part of the vendor harness, not the
-    // project. Real fixture: trace 01KSWP4YQD where the prompt body
-    // says "durable instructions like CLAUDE.md files" before vendor
+    // project. A reference fixture has the prompt body mention
+    // "durable instructions like CLAUDE.md files" before vendor
     // harness headings. Expectation: fall through to first-heading.
     name: 'prose mention "like CLAUDE.md" does not trigger claude-md',
     input:
@@ -128,8 +128,8 @@ for (const c of ctxCases) {
 
 const skillCases: Case<string, string[]>[] = [
   {
-    // Real codex shape — fixture 01KSWPQP0SD6FFX2QT37HCXF8R has 30+
-    // <skill><name>X</name>…</skill> blocks under <available_skills>.
+    // Real codex shape — fixtures with 30+ <skill><name>X</name>…
+    // </skill> blocks under <available_skills>.
     name: 'multi-skill body-name declaration (codex shape)',
     input:
       '<available_skills>\n  <skill>\n    <name>ai-search</name>\n    <description>...</description>\n  </skill>\n  <skill>\n    <name>gen-image</name>\n    <description>...</description>\n  </skill>\n</available_skills>',

@@ -124,8 +124,7 @@ export function classifyPromptSource(text: string): PromptSourceResult {
 // prompt: the project this trace belongs to and the named skills /
 // subagents the harness advertised. Both are pure heuristics with no
 // XML/markdown parsing dependency — regex + a tiny HTML-entity
-// fallback. Patterns are documented against real fixtures captured
-// from sub2api.
+// fallback. Patterns are documented against reference fixtures.
 
 export interface ProjectContext {
   /** Display name, with surrounding backticks stripped. */
@@ -159,7 +158,7 @@ function cleanHeadingText(raw: string): string {
 
 // Match an injection-style file reference for AGENTS.md / CLAUDE.md.
 // The real shape Claude Code uses in user-turn system reminders is:
-//   "Contents of /Users/leoyun/.claude/CLAUDE.md (project instructions…):"
+//   "Contents of /Users/example/.claude/CLAUDE.md (project instructions…):"
 // Codex variants drop "Contents of" and write a bare absolute path.
 // We require either the "Contents of" preamble OR a path separator
 // immediately before the filename — both rule out the prose-mention
@@ -266,8 +265,7 @@ function decodeHtmlEntities(s: string): string {
 }
 
 // Skill / subagent / agent / personality declarations the harness
-// advertises in the system prompt. Real codex example (fixture
-// 01KSWPQP0SD6FFX2QT37HCXF8R):
+// advertises in the system prompt. Real codex example:
 //   <skill>
 //     <name>ai-search</name>
 //     <description>…</description>

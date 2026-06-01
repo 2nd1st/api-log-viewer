@@ -2,12 +2,12 @@
  * Adapter for Google Gemini protocol (/v1beta/models/*:generateContent etc.).
  *
  * ============================================================================
- *  TODO: UNTESTED — no real sub2api samples exist for Gemini at write-time.
+ *  TODO: UNTESTED — no real Gemini captures exist yet.
  *  This adapter is designed from the public Gemini /v1beta docs
  *  (REST `generateContent` + `streamGenerateContent` shapes) and the
- *  GenerativeAI SDK types. Every code path SHOULD be revisited the first
- *  time a real Gemini trace lands in sub2api so we can verify part shapes,
- *  SSE event names, and tool-call ID conventions.
+ *  GenerativeAI SDK types. Every code path SHOULD be revisited the
+ *  first time a real Gemini trace is captured, so part shapes, SSE
+ *  event names, and tool-call ID conventions can be verified.
  * ============================================================================
  *
  * Gemini request shape (cheat sheet):

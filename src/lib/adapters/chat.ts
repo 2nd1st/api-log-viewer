@@ -1,7 +1,7 @@
 /**
  * Adapter for the OpenAI Chat Completions protocol (POST /v1/chat/completions).
  *
- * Real-world shapes (verified against /tmp/sub2api-samples/details):
+ * Real-world shapes observed in reference captures:
  *   - req.body is almost always a parsed dict with `messages: [...]`.
  *   - resp can arrive in any of these forms:
  *       (a) resp.body = dict     -> either a chat.completion OR an error envelope

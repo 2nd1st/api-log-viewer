@@ -1,15 +1,16 @@
 <script lang="ts">
   // Landing — default home view (#/, #/landing, #/dashboard alias).
   //
-  // Phase 2 A reshape (operator 2026-05-30):
+  // Shape:
   //
-  //   - Cut NEEDS ATTENTION + INTERNAL · healthz. Service-ops UI lives in
-  //     CPA / sub2gpt; the viewer's job is LLM content, not service ops.
+  //   - Service-ops UI (healthz counter cards, drop/error banners) lives
+  //     in the upstream gateway's own dashboard; this viewer focuses on
+  //     recorded LLM content.
   //   - 5 sections in render order: STATUS, CAPABILITY, ACTIVE CLIENTS,
   //     TOKEN USAGE, VOLUME.
-  //   - Vercel aesthetic: wider whitespace, larger sans display numbers,
-  //     right-aligned numerics, 6px corners, subtle 150ms hover, no
-  //     drop shadows, bordered-only cards.
+  //   - Wide whitespace, larger sans display numbers, right-aligned
+  //     numerics, 6px corners, subtle 150ms hover, no drop shadows,
+  //     bordered-only cards.
   //   - Single accent (teal-300) is reserved for active state / palette
   //     selected row / focus ring. NOT used on sparkline fill or block
   //     left rails — the page reads more monochrome.
