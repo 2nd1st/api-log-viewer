@@ -106,7 +106,7 @@ export const zh: Record<string, string> = {
   'traces.colStatus': '状态',
   'traces.colPath': '路径',
   'traces.colModel': '模型',
-  'traces.colKey': '密钥',
+  'traces.colKey': '密钥哈希',
   'traces.colSession': '会话',
   'traces.statusLoaded': '已加载 {n} 条',
   'traces.statusListFailed': '记录拉取失败',
@@ -346,6 +346,7 @@ export const zh: Record<string, string> = {
   'overview.tokensTotalSuffix': ' · 共 {total}',
   'overview.client': '客户端',
   'overview.key': '密钥',
+  'overview.keyHash': '密钥哈希',
   'overview.upstream': '上游',
   'overview.clientIp': '客户端 IP',
   'overview.promptSource': '提示来源',
@@ -394,7 +395,7 @@ export const zh: Record<string, string> = {
   'detail.metaDur': '耗时',
   'detail.metaModel': '模型',
   'detail.metaTokens': 'tokens',
-  'detail.metaKey': 'key',
+  'detail.metaKey': '密钥哈希',
   'detail.metaParent': '父记录',
 
   // ---------- conversation ----------

@@ -108,7 +108,7 @@ export const en: Record<string, string> = {
   'traces.colStatus': 'status',
   'traces.colPath': 'path',
   'traces.colModel': 'model',
-  'traces.colKey': 'key',
+  'traces.colKey': 'key hash',
   'traces.colSession': 'session',
   'traces.statusLoaded': '{n} loaded',
   'traces.statusListFailed': 'list failed',
@@ -362,6 +362,7 @@ export const en: Record<string, string> = {
   'overview.tokensTotalSuffix': ' · {total} total',
   'overview.client': 'client',
   'overview.key': 'key',
+  'overview.keyHash': 'key hash',
   'overview.upstream': 'upstream',
   'overview.clientIp': 'client ip',
   'overview.promptSource': 'prompt source',
@@ -411,7 +412,7 @@ export const en: Record<string, string> = {
   'detail.metaDur': 'dur',
   'detail.metaModel': 'model',
   'detail.metaTokens': 'tokens',
-  'detail.metaKey': 'key',
+  'detail.metaKey': 'key hash',
   'detail.metaParent': 'parent',
 
   // ---------- conversation tab (ConversationTab.svelte) ----------

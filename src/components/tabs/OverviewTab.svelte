@@ -77,6 +77,28 @@
 
   const client = $derived(classifyClient(ua));
 
+  // Pull the raw bearer / api key out of the request headers and mask
+  // as sk-XXX…XX9N (first 6 + ellipsis + last 4 — same shape as the
+  // admin-token mask in Settings). Operators reading the Overview
+  // tab use this to verify their client is configured against the
+  // right upstream key; the key_hash row below stays for filter /
+  // grouping correlation, since the SQLite list view is hash-only.
+  const rawKeyMasked = $derived.by<string>(() => {
+    const h: Record<string, unknown> = (trace?.req?.headers ?? {}) as Record<string, unknown>;
+    const auth = (h['authorization'] ?? h['Authorization'] ?? '') as string;
+    let key = '';
+    if (typeof auth === 'string' && auth) {
+      key = auth.replace(/^Bearer\s+/i, '').trim();
+    }
+    if (!key) {
+      const xapi = (h['x-api-key'] ?? h['X-Api-Key'] ?? h['X-API-Key'] ?? '') as string;
+      if (typeof xapi === 'string') key = xapi.trim();
+    }
+    if (!key) return '';
+    if (key.length <= 12) return key;
+    return key.slice(0, 6) + '…' + key.slice(-4);
+  });
+
   /**
    * Pull the protocol-level system / instructions text out of the
    * request body. Same logic the adapters use to surface a system
@@ -369,7 +391,8 @@
           <div class="ua dim">{client.raw}</div>
         {/if}
       </dd>
-      <dt>{t('overview.key')}</dt>      <dd>{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
+      <dt>{t('overview.key')}</dt>      <dd>{rawKeyMasked || '—'}</dd>
+      <dt>{t('overview.keyHash')}</dt>  <dd>{(row.key_hash || '—').slice(0, 16)}{#if row.key_hash && row.key_hash.length > 16}…{/if}</dd>
       <dt>{t('overview.upstream')}</dt> <dd>{row.upstream ?? '—'}</dd>
       <dt>{t('overview.clientIp')}</dt> <dd>{row.client ?? '—'}</dd>
       <dt>{t('overview.promptSource')}</dt>
