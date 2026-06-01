@@ -28,6 +28,7 @@
   // renderers but is unused here.
 
   import type { MediaBlock } from '../../lib/blocks';
+  import { safeMediaUrl } from '../../lib/safeMediaUrl';
   import { t } from '../../lib/i18n.svelte';
 
   function roleLabel(role: string): string {
@@ -54,18 +55,25 @@
   const isFile = $derived(!isImage && !isAudio && !isVideo);
 
   const hasInline = $derived(!!block.data_b64);
-  const hasUrl = $derived(!!block.url);
 
   // ─── Source URL (data: or remote/backend-served) ───────────────────
   // Synthesized only when we have something to point at. We hand the
-  // base64 to the browser as a data: URL — no atob in render.
-  const src = $derived.by<string | null>(() => {
-    if (hasInline) {
-      return `data:${block.mime_type || 'application/octet-stream'};base64,${block.data_b64}`;
-    }
-    if (hasUrl) return block.url!;
-    return null;
-  });
+  // base64 to the browser as a data: URL — no atob in render. Every
+  // URL is run through safeMediaUrl() so the renderer never trusts
+  // a raw trace value: external image-gen URLs go through the http(s)
+  // allow, backend-served extractions go through the same-origin
+  // /api/media allow, and `javascript:` / `blob:` / `data:text/...`
+  // get filtered before they reach the DOM.
+  const safeInlineSrc = $derived<string | null>(
+    hasInline
+      ? safeMediaUrl(
+          `data:${block.mime_type || 'application/octet-stream'};base64,${block.data_b64}`,
+        )
+      : null,
+  );
+  const safeExternalUrl = $derived<string | null>(safeMediaUrl(block.url));
+  const src = $derived<string | null>(safeInlineSrc ?? safeExternalUrl);
+  const hasUrl = $derived(!!safeExternalUrl);
 
   // ─── Display filename ─────────────────────────────────────────────
   const displayName = $derived(
@@ -207,7 +215,7 @@
         {:else if hasUrl}
           <a
             class="dl mono"
-            href={block.url}
+            href={safeExternalUrl}
             download={displayName}
             rel="noopener noreferrer"
             target="_blank"
