@@ -11,6 +11,8 @@
     path?: string | null;
     model?: string | null;
     key_hash?: string | null;
+    client_kind?: string | null;
+    client_version?: string | null;
     session_root_id?: string | null;
   }
 
@@ -365,12 +367,12 @@
 <table bind:this={tableEl} onwheel={onScroll} ontouchmove={onScroll}>
   <thead>
     <tr>
-      <th>{t('traces.colTime')}</th>
-      <th class="num">{t('traces.colStatus')}</th>
+      <th class="t">{t('traces.colTime')}</th>
+      <th class="s num">{t('traces.colStatus')}</th>
       <th>{t('traces.colPath')}</th>
-      <th>{t('traces.colModel')}</th>
-      <th>{t('traces.colKey')}</th>
-      <th>{t('traces.colSession')}</th>
+      <th class="m">{t('traces.colModel')}</th>
+      <th class="c">{t('traces.colClient')}</th>
+      <th class="sess">{t('traces.colSession')}</th>
     </tr>
   </thead>
   <tbody>
@@ -384,7 +386,15 @@
         <td class="s num {statusClass(row.status)}">{row.status ?? '—'}</td>
         <td>{row.path ?? ''}</td>
         <td class="m">{row.model ?? '—'}</td>
-        <td class="k" title={row.key_hash ?? ''}>{(row.key_hash ?? '').slice(0, 8)}</td>
+        <td
+          class="c"
+          title={row.client_kind
+            ? row.client_version
+              ? row.client_kind + ' ' + row.client_version
+              : row.client_kind
+            : ''}
+          >{row.client_kind ?? '—'}</td
+        >
         <td class="sess" title={row.session_root_id ?? ''}
           >{shortId(row.session_root_id)}</td
         >
@@ -399,9 +409,15 @@
      not bg. Hover: surface-elevated bg + 2px accent left indicator
      (inset box-shadow — not a drop shadow). */
 
+  /* table-layout: fixed lets us pin per-column widths so the table
+     survives a half-viewport detail-panel without crushing every
+     column into 2-char ellipsis stubs. Path is the only flex column
+     (no fixed width on its td/th); it absorbs whatever room is left
+     after the fixed columns claim theirs. */
   table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     font-family: var(--font-mono);
     font-size: var(--size-meta);
   }
@@ -431,11 +447,19 @@
     text-overflow: ellipsis;
     max-width: 0; /* triggers ellipsis with table-layout: auto */
   }
-  td.t { width: 88px; color: var(--fg-dim); }
-  td.s { width: 44px; }
-  td.m { width: 88px; color: var(--fg-dim); }
-  td.k { width: 70px; color: var(--fg-muted); }
-  td.sess { width: 80px; color: var(--fg-muted); }
+  /* Per-column widths sized to their longest realistic content:
+     - time   "HH:MM:SS.mmm" → 12 mono chars + padding
+     - status 3-digit code + ellipsis on edge → 44px
+     - model  most populated entries fit in ~110px ("claude-opus-4-8-thinking" still ellipsizes;
+              widening further would steal too much from path)
+     - client client_kind values (claude-code-desktop, opencode-cli, anthropic-sdk-python) → ~150px
+     - sess   shortId() returns last 8 chars → 80px
+  */
+  th.t,   td.t    { width: 100px; color: var(--fg-dim); }
+  th.s,   td.s    { width: 44px; }
+  th.m,   td.m    { width: 110px; color: var(--fg-dim); }
+  th.c,   td.c    { width: 150px; color: var(--fg-muted); }
+  th.sess, td.sess { width: 80px; color: var(--fg-muted); }
 
   /* Numeric columns right-align. Header and cell both align right
      and use tabular-nums so digits stay vertically lined up. */

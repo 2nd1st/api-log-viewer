@@ -109,6 +109,7 @@ export const en: Record<string, string> = {
   'traces.colPath': 'path',
   'traces.colModel': 'model',
   'traces.colKey': 'key hash',
+  'traces.colClient': 'client',
   'traces.colSession': 'session',
   'traces.statusLoaded': '{n} loaded',
   'traces.statusListFailed': 'list failed',

@@ -107,6 +107,7 @@ export const zh: Record<string, string> = {
   'traces.colPath': '路径',
   'traces.colModel': '模型',
   'traces.colKey': '密钥哈希',
+  'traces.colClient': '客户端',
   'traces.colSession': '会话',
   'traces.statusLoaded': '已加载 {n} 条',
   'traces.statusListFailed': '记录拉取失败',
