@@ -1,5 +1,4 @@
-// Formatting helpers ported 1:1 from the original
-// internal/viewer/static/index.html (lines ~576–731).
+// Formatting helpers ported from the legacy static viewer.
 //
 // These are pure presentation utilities — no state, no side effects.
 

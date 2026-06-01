@@ -8,21 +8,19 @@
   //                             Landing.svelte (internal naming).
   //   - Traces   (#/traces)   — list + detail surface
   //
-  // The legacy Healthz tab is gone; the operator data is absorbed into
-  // the Home view's "internal" section (see Landing.svelte). The legacy
+  // The legacy Healthz tab is gone; its data is absorbed into the Home
+  // view's status section (see Landing.svelte). The legacy
   // #/dashboard route still resolves (App.svelte rewrites it to
   // #/landing on entry) so old bookmarks keep working.
   //
-  // Phase L additions (2026-05-30):
+  // Header behavior:
   //   - Theme toggle button between status pill and token chip.
   //     Single click swaps dark <-> light and persists via lib/theme.
   //     Inline SVG glyphs only — no icon library.
-  //   - CSS uses the Phase L tokens (--fg-muted, --border, --accent,
+  //   - CSS uses canonical tokens (--fg-muted, --border, --accent,
   //     --size-body, --size-meta, --font-mono).
-  //
-  // Phase 1 i18n additions (2026-05-30):
   //   - Nav labels and aria/title strings go through t() so they switch
-  //     when the operator flips the language.
+  //     when the language changes.
   //   - Small text-only language toggle ("EN" / "中") sits between the
   //     status pill and the theme toggle, mirroring the theme-toggle
   //     shape. setLang() persists to localStorage['apilog.lang'].

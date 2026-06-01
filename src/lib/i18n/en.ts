@@ -30,16 +30,13 @@ export const en: Record<string, string> = {
   // ---------- home (Landing.svelte) ----------
   // CASING CONVENTION: section/label values are stored lowercase to
   // match the literal source in each component. CSS owns uppercase
-  // (text-transform: uppercase on .group-title, .m-label etc.). Phase 2
-  // agents copying strings out of templates should preserve the source
-  // case — do NOT type "STATUS" if the template says "status".
+  // (text-transform: uppercase on .group-title, .m-label etc.). Keep source
+  // strings lowercase; CSS owns display casing.
   'home.status': 'status',
   'home.capability': 'capability',
-  'home.needsAttention': 'needs attention',
   'home.activeClients': 'active clients',
   'home.tokenUsage': 'token usage',
   'home.volume': 'volume',
-  'home.internalHealthz': 'internal · healthz',
   'home.traces': 'traces',
   'home.data': 'data',
   'home.lastWrite': 'last write',
@@ -70,20 +67,6 @@ export const en: Record<string, string> = {
   'home.axis60min': '60 min',
   'home.axisNow': 'now',
   'home.sparkAriaLabel': 'traces per minute over the last 60 minutes',
-  'home.healthzAppended': 'appended',
-  'home.healthzIndexed': 'indexed',
-  'home.healthzDrops': 'drops',
-  'home.healthzTruncated': 'truncated',
-  'home.healthzWriterChan': 'writer chan',
-  'home.healthzSlowTraces': 'slow traces',
-  'home.healthzUpstreamDial': 'upstream dial err',
-  'home.healthzHighWater': 'high-water / 1024',
-  'home.healthzSlowSub': '> 30s end-to-end',
-  'home.healthzUpstreamSub': 'dns / tls / refused',
-  'home.healthzTimingsTitle': 'per-trace timings (ms)',
-  'home.healthzLag': 'lag {n}',
-  'home.healthzReason': 'r {req} · resp {resp}',
-
   // Incident reason chips (5xx / 4xx / slow / truncated — short labels)
   'home.reason.5xx': '5xx',
   'home.reason.4xx': '4xx',
@@ -141,14 +124,11 @@ export const en: Record<string, string> = {
   'export.generateButton': 'Generate & download',
   'export.generating': 'generating…',
   'export.failed': 'export failed ({status})',
-  // Forward-looking keys from the i18n contract — not yet rendered by
-  // Export.svelte but reserved here so Phase 2 (or the post-v0 export
-  // redesign) can adopt them without divergent-tree pain.
+  // Export strings shared by the export tab and any future export preview UI.
   'export.recentExports': 'Recent Exports',
   'export.estimatedSize': '≈ {size}',
   'export.preview': 'Preview',
-  // Phase 2 B revamp — copy that used to live inline in Export.svelte
-  // as a LOCAL_FALLBACK table. Hoisted here so en/zh are the single
+  // Export tab copy hoisted from Export.svelte so en/zh are the single
   // source of truth for every visible string in the export tab.
   'export.cardFilters': 'Filters',
   'export.cardGenerate': 'Generate',
@@ -211,12 +191,11 @@ export const en: Record<string, string> = {
   'settings.relativeDayAgo': '{n}d ago',
 
   // ---------- settings · plugins section ----------
-  // Settings page section that lists runtime plugin overrides. v1 has
-  // no hot-reload, so the section banner explicitly tells operators
-  // their edits won't take effect until backend restart.
+  // Settings page section that lists runtime plugin overrides. Edits apply
+  // through the backend plugin config API.
   'settings.plugins.sectionTitle': 'Plugins',
   'settings.plugins.sectionHelper':
-    'Configure operator-opt-in hooks that mutate or intercept requests / responses.',
+    'Configure enabled hooks that mutate or intercept requests / responses.',
   'settings.plugins.addButton': 'Add plugin',
   'settings.plugins.emptyState': 'No plugins configured.',
   'settings.plugins.sourceYaml': 'yaml',

@@ -5,7 +5,7 @@
   // collapsed by default. Each section header carries a size hint.
   //
   // The JSON pretty-print + elideHuge pipeline is brought over verbatim
-  // from BodyTab.svelte (palette-clean since 51530f1). The header grid is
+  // from BodyTab.svelte. The header grid is
   // brought over from HeadersTab.svelte. Nothing else changes.
   //
   // When response.body is absent but response.events is present (streaming
@@ -41,7 +41,7 @@
   const resHeaderEntries = $derived(Object.entries(resHeaders));
 
   // ---------------------------------------------------------------------
-  // Collapse state. Bodies expanded, headers collapsed — per task spec.
+  // Collapse state. Bodies expanded, headers collapsed by default.
   // ---------------------------------------------------------------------
   let openReqHeaders = $state(false);
   let openReqBody = $state(true);
@@ -455,10 +455,9 @@
     overflow: auto;
   }
 
-  /* JSON syntax classes — palette-only per PHILOSOPHY §5 (single
-     accent). Keys are subordinate labels (muted); strings carry the
-     content (default fg); numbers are the operator's eye-magnet (the
-     one accent); booleans / null are sparse, dim. No off-palette
+  /* JSON syntax classes — palette-only, single accent.
+     Keys are subordinate labels (muted); strings carry the content
+     (default fg); numbers use the one accent; booleans / null are sparse, dim. No off-palette
      hex literals. :global() because {@html} bypasses Svelte scoping. */
   :global(.json-key) {
     color: var(--fg-muted);

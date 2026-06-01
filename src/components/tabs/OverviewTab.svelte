@@ -19,7 +19,7 @@
   //
   // The previous RAW ROW card is gone; the Raw tab covers that need.
   //
-  // PHILOSOPHY:
+  // Rendering constraints:
   //   - One accent (--accent). Tones (--ok/--warn/--err) only for
   //     severity, never for role coding.
   //   - We render what's there; classification helpers are explicit
@@ -490,7 +490,7 @@
 </div>
 
 <style>
-  /* Phase 2B flatten — no card chrome, no bordered group. Each section
+  /* Flattened layout: no card chrome, no bordered group. Each section
      is a 10px uppercase muted label with a hairline underneath, then a
      stack of label/value rows where every row also ends in a hairline.
      The whole tab reads as one continuous table of facts, not a
@@ -572,7 +572,7 @@
 
   /* Tool inventory: a tight, mono list. No background fill — just
      spacing + a faint left edge to set it apart from the surrounding
-     kv row, in line with PHILOSOPHY (edge accents, not role fills). */
+     kv row, using edge accents rather than role fills. */
   .tool-list {
     margin: 0;
     padding: 0;
@@ -592,8 +592,7 @@
     color: var(--fg-muted);
   }
 
-  /* Severity tone dot for stop reason. Single accent rule per
-     PHILOSOPHY — these tones are severity, not role. */
+  /* Severity tone dot for stop reason. These tones are severity, not role. */
   .dot {
     display: inline-block;
     width: 6px;

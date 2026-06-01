@@ -2,7 +2,7 @@
  * Adapter for Anthropic Messages protocol (/v1/messages).
  *
  * Walks the Anthropic request/response shape into the viewer's Block[] union.
- * The sub2api gateway proxies the official Anthropic Messages API as-is, so
+ * The gateway proxies the official Anthropic Messages API as-is, so
  * we follow the public schema:
  *   https://docs.anthropic.com/claude/reference/messages_post
  *
@@ -56,7 +56,7 @@
  * enclosing message role, to match the schema (ToolResultBlock.role === 'tool').
  *
  * Note: no real streaming /messages samples existed at write-time, but the
- * non-streaming path was verified against ~30 sub2api detail blobs. The SSE
+ * non-streaming path was verified against reference detail captures. The SSE
  * path is built strictly off the documented Anthropic stream contract.
  */
 
@@ -246,8 +246,7 @@ function adaptResponseBody(body: any): Block[] {
   const out: Block[] = [];
 
   // Anthropic-style API error envelope: { type: 'error', error: { type, message } }.
-  // sub2api also surfaces upstream errors verbatim (e.g. 429 "No available
-  // accounts"), so emit an ErrorBlock so the operator can see WHY.
+  // The gateway also surfaces upstream errors verbatim, so emit an ErrorBlock with the upstream message.
   if (body?.type === 'error' || body?.error) {
     const err = body.error ?? body;
     out.push({

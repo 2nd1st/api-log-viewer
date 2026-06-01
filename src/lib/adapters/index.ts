@@ -6,7 +6,7 @@
  * the viewer hasn't taught itself yet, so the timeline at least shows
  * SOMETHING instead of silently rendering empty.
  *
- * Path detection rules (substring match — sub2api forwards the path as-is):
+ * Path detection rules (substring match; the backend records the request path as received):
  *   - /v1/chat/completions      -> chat.ts          (OpenAI Chat)
  *   - /v1/messages              -> messages.ts      (Anthropic Messages)
  *   - /v1/responses             -> responses.ts     (OpenAI Responses)

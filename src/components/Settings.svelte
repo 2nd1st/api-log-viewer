@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settings — viewer-side preferences + token surface + about.
   //
-  // Shape:
+  // Settings constraints:
   //   - "It is not THE frontend; it is A frontend." Composable, not
   //     authoritative. Plugin / gate / redact config does NOT live
   //     here — that's a backend YAML concern.
@@ -13,12 +13,12 @@
   //     selected row, and focus ring ONLY. Toggle on-state uses
   //     high-contrast var(--fg), NOT accent.
   //   - i18n: every visible string goes through t(). The dictionaries
-  //     (en.ts / zh.ts) are frozen for this phase; on a missing key
+  //     live in en.ts / zh.ts; on a missing key
   //     t() returns the key string itself which would surface as
   //     literal "settings.xxx" text. Every key used here is verified
   //     present in en.ts before write.
   //
-  // SECTIONS (4 cards, Vercel chrome):
+  // SECTIONS (4 cards):
   //   1. Display          — theme toggle, language toggle
   //   2. Default Filters  — default path filter, traces auto-refresh,
   //                         save-attachments (backend-connected), reset
@@ -133,13 +133,12 @@
   //
   // Backend GET /api/config/media → { save_attachments, source }
   // Backend PUT /api/config/media { save_attachments } persists to
-  // runtime_overrides.json and updates in-memory config. Per Phase K
-  // § 5.3 the change is NOT retroactive — existing files left alone.
+  // runtime_overrides.json and updates in-memory config. The change is NOT
+  // retroactive; existing files are left alone.
   //
   // This is the only Default-Filters row that talks to the backend.
   // We keep it here (rather than dropping it with the healthz live
-  // counters) because it's tied to export — and the operator's #1
-  // post-v0 priority is bundle export.
+  // counters) because it controls export attachment behavior.
 
   type MediaCfgState =
     | { kind: 'idle' }
@@ -219,9 +218,8 @@
 
   // ---------- AUTH: masked token ----------
 
-  // Snapshot the token on mount and on window focus — same as the
-  // pre-R7 component. AuthModal saves write through setToken() in
-  // lib/api.ts; we re-snapshot when the tab regains focus.
+  // Snapshot the token on mount and on window focus. AuthModal saves write
+  // through setToken() in lib/api.ts; we re-snapshot when the tab regains focus.
   let tokenSnapshot = $state<string>(getToken());
 
   function refreshTokenSnapshot() {
@@ -232,12 +230,12 @@
     const onFocus = () => refreshTokenSnapshot();
     window.addEventListener('focus', onFocus);
     // Backend-connected default-filters row — failures surface inline
-    // (404 → operator is on a pre-Phase-K backend, non-fatal).
+    // (404 -> backend does not support media config yet; non-fatal).
     void loadMediaCfg();
     return () => window.removeEventListener('focus', onFocus);
   });
 
-  // Operator prefers sk-XXX...XX9N shape — first 6 + last 4 with an
+  // Mask as sk-XXX...XX9N shape — first 6 + last 4 with an
   // ellipsis. Tokens shorter than 12 chars (would-be edge case) render
   // in full.
   const maskedToken = $derived.by<string>(() => {
@@ -450,13 +448,13 @@
 </div>
 
 <style>
-  /* Phase R7 Settings revamp — Vercel-leaning chrome on top of Phase L
-     tokens. Each section is a bordered card (no shadow), --radius-lg =
-     8px, --space-6 padding. Title 14px sans 600; subtitle 12px sans
-     muted. Rows are a grid with hairline-separated borders. Toggle is
-     a custom button with role="switch" — accent reserved per R7 (active
-     state / selected row / focus ring ONLY), so the toggle on-state
-     uses var(--fg) for high contrast, never --accent. */
+  /* Settings chrome: bordered cards, no shadow, canonical theme tokens.
+     Each section uses --radius-lg = 8px and --space-6 padding. Title
+     14px sans 600; subtitle 12px sans muted. Rows are a grid with
+     hairline-separated borders. Toggle is a custom button with
+     role="switch" — accent reserved for active state / selected row /
+     focus ring only, so the toggle on-state uses var(--fg) for high
+     contrast, never --accent. */
 
   .settings {
     padding: 0;
@@ -505,13 +503,12 @@
   }
 
   /* ---------- rows ----------
-     3-column grid per Phase R9 page-layout spec:
+     3-column grid:
        col 1: label, capped at content width with 160px floor so short
               labels still line up across rows
        col 2: optional helper text (or empty spacer), takes the slack
        col 3: control, right-justified
-     Eliminates the "label far-left, control far-right, 1500px of dead
-     space between" pathology the operator screenshotted. */
+     Controls stay close enough to labels to remain scannable on wide screens. */
   .rows {
     display: flex;
     flex-direction: column;

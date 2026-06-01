@@ -86,8 +86,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail (reasoning category =
-     --border-strong) + hairline bottom only. No top/right border. */
+  /* Block frame: 4px left rail + hairline bottom only. No top/right border. */
   .block {
     color: var(--fg-dim);
     border-top: 0;

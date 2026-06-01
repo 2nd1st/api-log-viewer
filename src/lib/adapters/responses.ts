@@ -287,7 +287,7 @@ function adaptInputMessage(item: Json, index: number): Block[] {
         text: typeof c.text === 'string' ? c.text : '',
       } satisfies TextBlock);
     } else if (cType === 'input_image' || cType === 'image_url') {
-      // input_image: per Phase K § 1.3 the URL form is URL-only (we never
+      // input_image: the URL form is URL-only (we never
       // fetch remote https://...). The data: URL form is rare but legal —
       // when present, extract the base64 inline. NB: idx ordering matches
       // backend extractor walk order (convention, not contract — see

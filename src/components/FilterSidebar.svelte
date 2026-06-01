@@ -260,10 +260,7 @@
 </aside>
 
 <style>
-  /* Phase 2 C density pass — Phase L canonical tokens.
-     No bg fills beyond var(--surface). No drop shadows. No gradients
-     beyond the functional <select> chevron. Hairline dividers between
-     groups; outline-only buttons. */
+  /* Density pass: canonical tokens, no decorative fills, shadows, or gradients. */
 
   #filters {
     width: 208px;

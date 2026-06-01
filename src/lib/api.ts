@@ -36,9 +36,9 @@
 export const TOKEN_KEY = 'apilog.token';
 export const DEFAULT_PATH_KEY = 'apilog.default_path';
 
-// Default path filter — hides /api/v1/* admin-UI noise on sub2api
-// deployments. Stored in localStorage so a future settings UI can edit
-// this; for now operators can clear the input to "*" to see everything.
+// Default path filter — hides common /api/v1/* admin-UI noise. Stored in
+// localStorage so a future settings UI can edit this; for now operators can
+// clear the input to "*" to see everything.
 function loadDefaultPathFilter(): string {
   try {
     return localStorage.getItem(DEFAULT_PATH_KEY) || '/v1/*';

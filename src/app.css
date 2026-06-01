@@ -1,6 +1,6 @@
 /* Base styles. Component-specific styles live scoped inside each .svelte file.
  *
- * Phase L token scheme (2026-05-30):
+ * Theme token scheme:
  *
  *   - :root carries the dark theme; [data-theme="light"] overrides
  *     neutrals + status hues. --accent is shared across both.
@@ -9,20 +9,18 @@
  *     carry status semantics; --ok / --warn / --err do that.
  *   - The legacy token names (--bg-elev, --mono, --gap-*, --radius,
  *     --accent-dim, --sans) are aliased onto the new tokens at the
- *     bottom of :root so untouched Phase H components keep rendering
- *     while Phase 2 work migrates references. Phase 2 deletes the
- *     alias block once those files use the new names directly.
- *   - Phase 1 Vercel-leaning delta (2026-05-30): --radius-md bumped
- *     4px → 6px; --radius-lg = 8px added for primary cards. New
- *     spacing tokens (--space-section, --space-section-wide) for the
- *     wider Home section gaps. New display-number tokens
- *     (--size-display, --size-display-lg, --font-weight-display) for
+ *     bottom of :root so older components keep rendering while
+ *     references migrate to the canonical token names.
+ *   - --radius-md is 6px; --radius-lg = 8px for primary cards.
+ *     Spacing tokens (--space-section, --space-section-wide) set the
+ *     wider Home section gaps. Display-number tokens
+ *     (--size-display, --size-display-lg, --font-weight-display) render
  *     headline metrics in sans semibold. No drop shadows. No nested
  *     cards. No role background fills.
  */
 
 :root {
-  /* ---- Phase L tokens (canonical names) ---- */
+  /* ---- Canonical theme tokens ---- */
   --bg: #0a0a0b;
   --surface: #18181b;
   --surface-elevated: #1f1f23;     /* selected row / palette panel */
@@ -40,8 +38,8 @@
   --err: #f87171;
 
   --radius-sm: 2px;
-  --radius-md: 6px;               /* Phase 1: was 4px — Vercel-leaning */
-  --radius-lg: 8px;               /* Phase 1: NEW — primary cards (Export, Settings group) */
+  --radius-md: 6px;
+  --radius-lg: 8px;               /* primary cards */
 
   --space-1: 4px;
   --space-2: 8px;
@@ -49,33 +47,29 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
-  --space-section: 32px;          /* Phase 1: NEW — between major Home sections */
-  --space-section-wide: 48px;     /* Phase 1: NEW — between dissimilar groups */
+  --space-section: 32px;
+  --space-section-wide: 48px;
 
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --size-label: 11px;             /* uppercase section labels (R2 +1px) */
-  --size-meta: 12px;              /* mono cells (R2 +1px) */
-  --size-body: 13px;              /* default UI (R2 +1px) */
-  --size-input: 14px;             /* form inputs (R2 +1px) */
-  --size-display: 24px;           /* Phase 1: NEW — headline metric numbers */
-  --size-display-lg: 30px;        /* Phase 1: NEW — primary callout numbers */
-  --font-weight-display: 600;     /* Phase 1: NEW — semibold for display numbers */
+  --size-label: 11px;             /* uppercase section labels */
+  --size-meta: 12px;              /* mono cells */
+  --size-body: 13px;              /* default UI */
+  --size-input: 14px;             /* form inputs */
+  --size-display: 24px;           /* headline metric numbers */
+  --size-display-lg: 30px;        /* primary callout numbers */
+  --font-weight-display: 600;     /* semibold display numbers */
 
   /* Overlay backdrop used by AuthModal + CommandPalette. */
   --bg-overlay: rgba(10, 10, 11, 0.8);
 
-  /* ---- Back-compat aliases (Phase L → Phase 2 migration) ----
+  /* ---- Back-compat token aliases ----
    *
-   * The Phase H codebase referenced the legacy names below in ~250
-   * places across components not in Phase 1 scope (FilterSidebar,
-   * TracesList, Landing, DetailPanel, blocks/*, etc.). Removing the
-   * names would silently break those files: CSS custom-property
-   * failures don't fail `svelte-check` or `vite build`, they just
-   * render with no fill, no radius, fallback fonts. So we keep the
-   * old names pointing at the new tokens until Phase 2 migrates each
-   * reference, then this whole alias block is deleted.
+   * Older components still reference the legacy names below. CSS
+   * custom-property failures do not fail `svelte-check` or `vite build`;
+   * they render with no fill, no radius, or fallback fonts. Keep the old
+   * names pointing at the canonical tokens until references migrate.
    */
   --bg-elev: var(--surface);
   --bg-elev-2: var(--surface-elevated);
@@ -106,9 +100,9 @@
   --bg-overlay: rgba(250, 250, 250, 0.8);
 }
 
-/* Phase L R9 — page container utility.
-   Used by Landing / Export / Settings to give them a Vercel-style
-   centered content column. Three width variants:
+/* Page container utility.
+   Used by Landing / Export / Settings to give them a centered content
+   column. Three width variants:
      .page-container          (default 1180px, used by Home + Export)
      .page-container--narrow  (880px, used by Settings)
    Horizontal padding scales with viewport via clamp(): 24px on

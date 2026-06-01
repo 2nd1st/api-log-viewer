@@ -1,7 +1,7 @@
 <script lang="ts">
   // Landing — default home view (#/, #/landing, #/dashboard alias).
   //
-  // Shape:
+  // Landing layout:
   //
   //   - Service-ops UI (healthz counter cards, drop/error banners) lives
   //     in the upstream gateway's own dashboard; this viewer focuses on
@@ -88,9 +88,8 @@
   //
   // Only the four fields STATUS reads (appended + total_bytes +
   // total_media_files + uptime_seconds for the bytes/h rate) matter
-  // now that the INTERNAL card grid is gone and R8 has swapped the
-  // service-perf cells (proxy / api / uptime) for content-volume
-  // cells (traces / data / media / last-write). The wider counters
+  // now that the service-health card grid is gone and the status strip shows
+  // content-volume cells (traces / data / media / last-write). The wider counters
   // type is kept narrow so type errors surface if the backend shape
   // drifts.
 
@@ -144,8 +143,7 @@
 
   // bytes/hour estimated from total_bytes / uptime_seconds. The
   // STATUS DATA cell renders this below the headline as a content-
-  // volume rate (operator quote: "dump 了多少内容"). Em-dash on
-  // missing or zero-uptime input — better silent fallback than a
+  // volume rate. Missing or zero-uptime input renders an em-dash instead of a
   // bogus "Infinity B/h".
   const dataRateLabel = $derived.by(() => {
     const b = healthz?.counters?.total_bytes;
@@ -166,10 +164,9 @@
     return n.toLocaleString();
   });
 
-  // MEDIA subline — Phase 2 A R8 polish: the always-rendered "{n} files"
-  // subline just restated the headline number, so it's gone. Replaced
-  // with an average derived from the 200-row sample's media_count int
-  // field: sum(media_count) / sample length, rounded to 1 decimal.
+  // MEDIA subline: replace the redundant "{n} files" value with an average
+  // derived from the 200-row sample's media_count int field:
+  // sum(media_count) / sample length, rounded to 1 decimal.
   // Returns null when the sum is 0 (or the sample is empty) so the
   // template omits the cell-sub line entirely rather than reserving
   // layout space for an em-dash.
@@ -302,8 +299,7 @@
 
   // ---------- VOLUME sparkline ----------
   //
-  // Bars use --fg (not --accent) per the Phase 2 A monochrome shift:
-  // accent is reserved for active state / focus / palette selection.
+  // Bars use --fg (not --accent); accent is reserved for active state / focus / palette selection.
 
   const SPARK_BUCKETS = 60;
   const SPARK_BUCKET_MS = 60_000;
@@ -508,8 +504,8 @@
 <style>
   /* ---------- outer layout ---------- *
    *
-   * Phase 2 A R9 wraps the section stack in a Vercel-style centered
-   * .page-container (1180px max-width, clamp-padded horizontally —
+   * The section stack uses the centered .page-container utility
+   * (1180px max-width, clamp-padded horizontally —
    * see app.css). The outer .landing is now just the scroll/viewport
    * shell; all section rhythm lives on .page-container as a flex
    * column with var(--space-section) gap. The TOKEN USAGE → VOLUME
@@ -542,9 +538,9 @@
 
   /* ---------- block frame (hairline border, no card chrome) ---------- *
    *
-   * 6px corners via var(--radius-md) per Phase 1's Vercel-leaning token
-   * delta. No drop shadow, no nested card. The border-only treatment is
-   * load-bearing — adding fills breaks the restraint principle.
+   * 6px corners via var(--radius-md). No drop shadow, no nested card.
+   * The border-only treatment is load-bearing — adding fills breaks the
+   * restraint principle.
    */
   .block {
     border: 1px solid var(--border);
@@ -585,10 +581,10 @@
     padding: var(--space-2) 0;
   }
 
-  /* ---------- STATUS strip (R8 content-volume cells) ---------- *
+  /* ---------- STATUS strip (content-volume cells) ---------- *
    *
-   * Phase 2 A R8 swap: the STATUS strip is now 4 equal-width content-
-   * volume cells (TRACES / DATA / MEDIA / LAST WRITE), each rendered
+   * The STATUS strip is 4 equal-width content-volume cells
+   * (TRACES / DATA / MEDIA / LAST WRITE), each rendered
    * as its own micro-card via the shared block chrome — --surface bg
    * + 1px --border + var(--radius-md) 6px corners + var(--space-4)
    * padding. The single-accent rule is preserved (no --accent on
@@ -596,8 +592,7 @@
    * palette selection).
    *
    * Layout is CSS grid 4×1fr rather than the auto-fit minmax pattern
-   * used by .metric-row, because the operator-mandated cut from 6
-   * cells to 4 means we have room to commit to a fixed 4-up layout
+   * used by .metric-row; four cells fit comfortably in a fixed 4-up layout
    * at every breakpoint above ~640px. The micro-card chrome reads
    * better when each cell is wide enough to right-align a multi-
    * digit headline without wrapping.
@@ -631,12 +626,10 @@
 
   /* ---------- metric row (TOKEN USAGE) ---------- *
    *
-   * Vercel-aesthetic delta: label sits top-left in small uppercase sans;
-   * value sits below right-aligned in sans semibold display size. The
-   * right-alignment is the operator's "都是左对齐很怪" fix — numbers
-   * stick to the right edge of each cell so the eye can scan a column
-   * of values vertically. Display weight (--font-weight-display = 600)
-   * carries the visual weight that mono used to in Phase H.
+   * Label sits top-left in small uppercase sans; value sits below
+   * right-aligned in sans semibold display size. Numeric right-alignment
+   * lets values scan as a column. Display weight
+   * (--font-weight-display = 600) carries the visual weight.
    */
   .metric-row {
     display: grid;
@@ -687,7 +680,8 @@
    *
    * Presence signal, not selection — lit reads as bright --fg with a
    * stronger border, dim reads as --fg-dim with hairline border. Accent
-   * stays out of this strip per the Phase 2 A narrower-accent rule.
+   * stays out of this strip; it is reserved for active state / focus /
+   * palette selection.
    * Mono kept on chip labels because they're protocol identifiers
    * (chat / messages / responses / gemini).
    */
@@ -764,9 +758,9 @@
 
   /* ---------- VOLUME sparkline ---------- *
    *
-   * Monochrome shift (Phase 2 A R7): bar fill is --fg, not --accent. The
-   * accent is reserved for active state / focus / palette selection now,
-   * so the sparkline reads as quiet operator data rather than decoration.
+   * Bar fill is --fg, not --accent. Accent is reserved for active state /
+   * focus / palette selection, so the sparkline reads as quiet activity
+   * data rather than decoration.
    * Opacity 0.6 keeps full bars from feeling heavy against the surface.
    */
   .spark-wrap {

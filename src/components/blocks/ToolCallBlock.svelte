@@ -91,8 +91,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail (tool category = --border-strong)
-     + hairline bottom only. No top/right border, no card background. */
+  /* Block frame: 4px left rail + hairline bottom only. No top/right border, no card background. */
   .block {
     display: flex;
     flex-direction: column;
@@ -160,9 +159,8 @@
     color: var(--border-strong);
   }
 
-  /* Type indicator — lowercase outline chip per Phase 2B spec:
-     10px, no background fill, 1px var(--border-strong) outline,
-     1px padding, --radius-sm corners. */
+  /* Type indicator: lowercase outline chip, no background fill.
+     10px, 1px var(--border-strong) outline, 1px padding, --radius-sm corners. */
   .kind {
     font-family: var(--font-mono);
     font-size: var(--size-label);

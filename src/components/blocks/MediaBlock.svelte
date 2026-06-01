@@ -1,23 +1,21 @@
 <script lang="ts">
   // MediaBlock renderer.
   //
-  // Backend PHILOSOPHY §1 (render what's there, no synthesis):
+  // Render recorded media fields without synthesis:
   //   - We render the NAMED inline fields the adapter populated:
   //     `block.url` (remote URL or backend-served extracted path) or
   //     `block.data_b64` (inline base64 from the protocol).
   //   - `body_b64` is NOT an attachment — it's the unparseable-fallback
   //     container — and is NOT routed into MediaBlock by the adapter.
   //
-  // Backend §2: capture is non-blocking. The viewer reads what the
-  //   extractor (and adapter) recorded; this renderer is a read-only
-  //   view over those fields.
+  // Capture is non-blocking. The viewer reads what the extractor and adapter recorded.
   //
-  // Backend §6: filesystem is truth. When `block.url` points at the
-  //   extracted file served by /api/media/..., the browser fetches the
-  //   real bytes. When only `data_b64` is present we synthesize a
-  //   data: URL — no JS decode of the b64 in the render path.
+  // Filesystem-backed media is fetched as recorded. When `block.url` points at
+  // the extracted file served by /api/media/..., the browser fetches the real
+  // bytes. When only `data_b64` is present we synthesize a data: URL — no JS
+  // decode of the b64 in the render path.
   //
-  // Viewer PHILOSOPHY §5 (restraint):
+  // Visual restraint:
   //   - No background fills on the block. Hairline border-bottom only.
   //   - Role label upper-left, small-caps, --fg-dim.
   //   - Right-aligned metadata strip: side · container · size · mime,
@@ -229,9 +227,9 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail + hairline bottom only.
-     MediaBlock has no role-class wiring (markup is frozen this pass)
-     so the rail defaults to --border-strong. The head row's role
+  /* Block frame: 4px left rail + hairline bottom only.
+     MediaBlock has no role-class wiring, so the rail defaults to
+     --border-strong. The head row's role
      label still carries role identity in text. */
   .block {
     display: flex;
@@ -275,7 +273,7 @@
     color: var(--fg-dim);
   }
 
-  /* Type indicator — lowercase outline chip per Phase 2B spec. */
+  /* Type indicator — lowercase outline chip. */
   .kind {
     text-transform: lowercase;
     letter-spacing: 0.02em;

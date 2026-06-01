@@ -1,7 +1,6 @@
 // stopReason — translate protocol-specific stop / finish_reason codes
 // into one operator-language label per outcome, plus a severity tone
-// the caller maps to --ok / --warn / --err (severity-only colors per
-// viewer PHILOSOPHY; no role-coded fills).
+// the caller maps to --ok / --warn / --err (severity-only colors; no role-coded fills).
 
 export type StopTone = 'ok' | 'warn' | 'err' | '';
 

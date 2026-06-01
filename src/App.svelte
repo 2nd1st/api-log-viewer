@@ -5,7 +5,7 @@
   // datalist suggestion sets, status banner text/kind, auth-modal
   // visibility, pager state) and wires every sibling component together.
   //
-  // Routing (as of the landing switch, 2026-05-30):
+  // Routing:
   //   #/                  -> Landing (default)
   //   #/landing           -> Landing
   //   #/dashboard         -> legacy alias, console.warn + replaceState

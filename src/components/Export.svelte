@@ -1,36 +1,34 @@
 <script lang="ts">
   // Export tab — bundle matching traces into a zip with agent instructions.
   //
-  // Contract: phase-i-export-contract.md
+  // Backend contract:
   //   GET /api/export?status=&path=&model=&key_hash=&session_root_id=&since=&until=&limit=
   //   -> application/zip with Content-Disposition: attachment
   //
-  // PHILOSOPHY (Phase 2 B revamp — Vercel-leaning delta 2026-05-30):
+  // Export tab design constraints:
   //   - Two-card layout: Filters card (left) + Generate card (right) +
-  //     Recent Exports section below. Earlier passes flat-stacked
-  //     everything in one scrolling column; the operator said it read
-  //     "rough". Grouping tells the operator what they're doing.
+  //     Recent Exports section below. Grouping separates filter scope from
+  //     generation controls.
   //   - Wider whitespace (--space-6 inside cards, --space-4 between)
   //     and --radius-lg (8px) for the primary cards. --radius-md (6px)
   //     for inputs and the Generate button.
   //   - Single accent token is reserved for active state / focus ring
-  //     only (R7 narrowed scope). Primary Generate button uses INVERT —
-  //     bg=var(--fg) / text=var(--bg) — so the page reads monochrome
-  //     with one quiet semaphore, not decoration.
-  //   - Numbers right-align (operator: "都是左对齐很怪"). The matching-
-  //     row count uses --size-display (24px sans 600) as the headline.
+  //     only. Primary Generate button uses inverted colors:
+  //     bg=var(--fg) / text=var(--bg).
+  //   - Numbers right-align. The matching-row count uses --size-display
+  //     (24px sans 600) as the headline.
   //   - NO new deps, NO webfonts, NO chart lib. System sans fallback
   //     chain only.
   //
   // HONEST COUNT LABELING:
-  //   /api/traces caps at 500 rows. We probe with the operator's
+  //   /api/traces caps at 500 rows. We probe with the requested
   //   filter set, then label the result:
-  //     - returned == operator's limit (which is ≤ 500): "≤ {n}"
-  //     - returned == 500 AND operator's limit > 500: "≥ 500"
+  //     - returned == requested limit (which is ≤ 500): "≤ {n}"
+  //     - returned == 500 AND requested limit > 500: "≥ 500"
   //     - returned < cap on either side: exact "{n}"
   //   Why this matters: showing a limit-capped number in a 24px display
-  //   font implies authority. We can't add a count endpoint (two-
-  //   projects rule), but we can refuse to lie.
+  //   font implies authority. Without a count endpoint, capped results
+  //   must be labeled as lower bounds.
   //
   // SIZE ESTIMATE:
   //   rows × ~10kB, rendered via humanBytes. Tagged with ≈ prefix
@@ -152,17 +150,16 @@
   // ---------- live matching-row count ----------
   //
   // Debounced probe of /api/traces with the current filter set. We
-  // can't ask the backend for a true count (no count endpoint, no new
-  // API asks per the two-projects rule), so we probe with the
-  // operator's limit capped to 500 (the /api/traces ceiling) and label
-  // the result honestly:
+  // can't ask the backend for a true count (no count endpoint), so we probe
+  // with the requested limit capped to 500 (the /api/traces ceiling) and
+  // label the result honestly:
   //   - returned == probeLimit: true count is AT LEAST n. Render as
   //     "≥ {n}". A cap hit always implies n is a LOWER bound, never
   //     an upper bound — /api/traces never returns fewer than
   //     probeLimit rows when more would have matched.
   //   - else: exact "{n}".
   //
-  // We track which ceiling we hit (operator limit vs the hard 500 cap)
+  // We track which ceiling we hit (requested limit vs the hard 500 cap)
   // because it matters for the size estimate hint, but the display
   // operator is "≥" in both capped cases.
 
@@ -644,10 +641,7 @@
 </div>
 
 <style>
-  /* Phase 2 B revamp — Vercel-leaning delta on canonical Phase L tokens.
-     Wider whitespace, bordered cards (no shadow / no gradient), invert
-     primary button, right-aligned numbers. Accent reserved for focus
-     ring + active state — page reads monochrome. */
+  /* Export layout: centered content, bordered cards, inverted primary button, no shadows or gradients. */
 
   /* .export is the outer scroll/flex shell; .page-container (global
      utility from app.css) lives inside it and supplies the centered
@@ -792,7 +786,7 @@
   }
   .form .input:focus,
   .form select:focus {
-    border-color: var(--accent); /* accent reserved for focus ring (R7) */
+    border-color: var(--accent); /* accent reserved for focus ring */
   }
   .form select {
     appearance: none;

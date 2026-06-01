@@ -6,12 +6,8 @@
   export type { TraceBlob, TraceDetail, TraceRow } from '../lib/trace';
   import type { TraceDetail } from '../lib/trace';
 
-  // Tab strip kept intentionally small. The events/session/replay tabs
-  // were retired 2026-05-29 — events was a low-level firehose nobody
-  // read, session was redundant with the conversation include-session
-  // toggle, and replay was capability-mode no operator used. The backend
-  // /api/traces/:id/replay endpoint is preserved for scripting; the UI
-  // surface is gone.
+  // Tab strip kept intentionally small. Events/session/replay are not shown in
+  // the UI; replay remains available through the backend API for scripting.
   //
   // 2026-05-30: headers + body merged into a single 'raw' tab. Operators
   // who want raw transport data want all four blocks (req headers, req

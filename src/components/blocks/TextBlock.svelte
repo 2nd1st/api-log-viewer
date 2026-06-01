@@ -129,7 +129,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left role rail + hairline bottom only.
+  /* Block frame: 4px left role rail + hairline bottom only.
      No top/right border, no card background, no shadow. Role rail is
      the only role-coded visual signal. */
   .block {

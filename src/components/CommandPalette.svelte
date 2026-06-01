@@ -1,14 +1,13 @@
 <script lang="ts">
   // CommandPalette — Cmd+K overlay.
   //
-  // Indexes three families (per phase-l-spec §4):
+  // Indexes three families:
   //   ROUTES: Home, Traces, Export, Settings
   //   FILTER PRESETS: status≥400, last 24h, Claude only, OpenAI only
-  //     NOTE — Phase 1 deviation: the brief says preset = "set viewer
-  //     URL hash with query params" but App.svelte's applyHash()
-  //     splits on `/` and would bounce `#/traces?status=400` back to
-  //     #/landing. So Phase 1 presets navigate to plain `#/traces`
-  //     with no params; Phase 2 wires the param-applying path.
+  //     NOTE: presets currently navigate to #/traces without query params;
+  //     App.svelte's applyHash() splits on `/` and would bounce
+  //     `#/traces?status=400` back to
+  //     #/landing.
   //   RECENT TRACES: passed in via `recentTraces` prop, no API call
   //
   // The component owns its open/closed state. App.svelte binds the
@@ -21,9 +20,7 @@
   import { t } from '../lib/i18n.svelte';
 
   interface Props {
-    /** Recent trace rows for the "RECENT TRACES" section. App.svelte
-     *  may pass `[]` in Phase 1 — the section renders an empty
-     *  state. Phase 2 wires Landing's loaded rows through. */
+    /** Recent trace rows for the "RECENT TRACES" section. Empty arrays render the empty state. */
     recentTraces?: TraceRow[];
   }
 
@@ -54,7 +51,7 @@
 
   // Filter presets — see comment at top of file re: hint vs. href.
   // hint shows the operator-facing query the preset represents;
-  // href stays at plain `#/traces` until Phase 2 wires param routing.
+  // href stays at plain #/traces until hash query-param routing exists.
   const PRESETS: Entry[] = $derived([
     { kind: 'preset', label: t('palette.preset4xx5xx'),   hint: t('palette.preset4xx5xxHint'),   href: '#/traces' },
     { kind: 'preset', label: t('palette.presetLast24h'),  hint: t('palette.presetLast24hHint'),  href: '#/traces' },

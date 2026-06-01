@@ -16,7 +16,7 @@
 //
 // Backend response shapes are mirrored here as TypeScript types; the
 // viewer treats config_schema.fields as opaque (null today, possibly
-// populated by Phase 2 for typed form generation) and falls back to a
+// populated later for typed form generation) and falls back to a
 // raw JSON textarea when no hardcoded form covers a given type.
 //
 // Errors propagate. authFetch already pops the auth modal on 401 and

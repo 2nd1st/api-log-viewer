@@ -1,11 +1,11 @@
 <script lang="ts">
-  // Plugins — top-level page promoted out of Settings (W4.2).
+  // Plugins — top-level page promoted out of Settings.
   //
   // Why this exists:
   //   The plugin surface used to live as a card mid-way through
   //   Settings.svelte. As the editor (rule rows, probability sliders,
-  //   per-type forms) grew, the operator wanted it pinned to its own
-  //   nav tab so it's discoverable from the header without scrolling
+  //   per-type forms) grew, it moved to its own nav tab for discoverability
+  //   from the header without scrolling
   //   past Display / Default Filters / Auth.
   //
   // What this file is:
@@ -14,8 +14,7 @@
   //   helper (settings.plugins.sectionHelper) — adding another page
   //   header here would render the exact same title + helper twice.
   //   So this page intentionally hosts PluginList directly inside the
-  //   .page-container; PluginList's card-head serves as the page
-  //   title. See W4.2 dispatch notes.
+  //   .page-container; PluginList's card-head serves as the page title.
   //
   // Structure copied from Export.svelte (the matching case — top-level
   // page, default 1180px page-container, takes authFetch). The outer

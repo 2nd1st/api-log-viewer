@@ -394,9 +394,8 @@
 </table>
 
 <style>
-  /* Phase 2 C density pass — Phase L canonical tokens.
-     11px mono cells, 24px row height (8px vertical padding), hairline
-     between rows only, NO row bg fills. Status color via text only,
+  /* Density pass: 11px mono cells, 24px row height, hairline row dividers,
+     no row bg fills. Status color via text only,
      not bg. Hover: surface-elevated bg + 2px accent left indicator
      (inset box-shadow — not a drop shadow). */
 
@@ -438,8 +437,7 @@
   td.k { width: 70px; color: var(--fg-muted); }
   td.sess { width: 80px; color: var(--fg-muted); }
 
-  /* Numeric column right-align — Vercel-aesthetic delta (operator
-     2026-05-30: "都是左对齐很怪"). Header and cell both align right
+  /* Numeric columns right-align. Header and cell both align right
      and use tabular-nums so digits stay vertically lined up. */
   th.num,
   td.num {

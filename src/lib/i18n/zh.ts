@@ -33,11 +33,9 @@ export const zh: Record<string, string> = {
   // ---------- home ----------
   'home.status': '状态',
   'home.capability': '支持协议',
-  'home.needsAttention': '需要关注',
   'home.activeClients': '活跃客户端',
   'home.tokenUsage': 'Token 用量',
   'home.volume': '请求量',
-  'home.internalHealthz': '内部 · healthz',
   'home.traces': '记录数',
   'home.data': '数据量',
   'home.lastWrite': '最近写入',
@@ -68,20 +66,6 @@ export const zh: Record<string, string> = {
   'home.axis60min': '60 分钟前',
   'home.axisNow': '现在',
   'home.sparkAriaLabel': '最近 60 分钟的每分钟记录数',
-  'home.healthzAppended': '已写入',
-  'home.healthzIndexed': '已索引',
-  'home.healthzDrops': '丢弃',
-  'home.healthzTruncated': '截断',
-  'home.healthzWriterChan': 'writer 通道',
-  'home.healthzSlowTraces': '慢记录',
-  'home.healthzUpstreamDial': '上游连接错误',
-  'home.healthzHighWater': '高水位 / 1024',
-  'home.healthzSlowSub': '> 30 秒端到端',
-  'home.healthzUpstreamSub': 'dns / tls / refused',
-  'home.healthzTimingsTitle': '每条记录耗时 (ms)',
-  'home.healthzLag': '滞后 {n}',
-  'home.healthzReason': '请求 {req} · 响应 {resp}',
-
   'home.reason.5xx': '5xx',
   'home.reason.4xx': '4xx',
   'home.reason.slow': '慢',
@@ -141,8 +125,7 @@ export const zh: Record<string, string> = {
   'export.recentExports': '最近导出',
   'export.estimatedSize': '约 {size}',
   'export.preview': '预览',
-  // Phase 2 B 改版前在 Export.svelte 里以 LOCAL_FALLBACK 形式内嵌的文案，
-  // 现集中到 en/zh，作为导出页所有可见字符串的唯一来源。
+  // 导出页文案集中到 en/zh，作为导出页所有可见字符串的唯一来源。
   'export.cardFilters': '筛选条件',
   'export.cardGenerate': '生成',
   'export.matchingRows': '匹配条数',
@@ -199,11 +182,10 @@ export const zh: Record<string, string> = {
   'settings.relativeDayAgo': '{n} 天前',
 
   // ---------- settings · plugins ----------
-  // 设置页里列运行时插件覆盖的板块。v1 不支持热重载，因此 banner 明确
-  // 告知操作者改动要等后端重启才会生效。
+  // 设置页里列运行时插件覆盖的板块。改动通过后端插件配置 API 生效。
   'settings.plugins.sectionTitle': '插件',
   'settings.plugins.sectionHelper':
-    '配置由操作者主动开启的钩子，可改写或拦截请求 / 响应。',
+    '配置已启用的钩子，可改写或拦截请求 / 响应。',
   'settings.plugins.addButton': '新增插件',
   'settings.plugins.emptyState': '尚未配置插件。',
   'settings.plugins.sourceYaml': 'yaml',

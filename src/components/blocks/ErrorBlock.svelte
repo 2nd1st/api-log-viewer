@@ -92,8 +92,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail (error category =
-     --border-strong per spec) + hairline bottom only. The --err
+  /* Block frame: 4px left rail + hairline bottom only. The --err
      severity color still appears inline on the ⚠ glyph and the
      error_type label, so the row reads as a failure without the
      rail competing for status semantics. */
@@ -142,7 +141,7 @@
        with the lowercase "error" text without dragging the row taller. */
     line-height: 1;
   }
-  /* Type indicator "error" — lowercase outline chip per Phase 2B spec. */
+  /* Type indicator "error" — lowercase outline chip. */
   .kind {
     color: var(--fg-muted);
     font-size: var(--size-label);

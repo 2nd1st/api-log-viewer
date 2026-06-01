@@ -1,6 +1,6 @@
 // i18n runtime — runes-based reactive language switcher.
 //
-// PHILOSOPHY (operator constraints):
+// Runtime constraints:
 //   - Open-source first: default language is detected from
 //     navigator.language; "zh" prefix → 'zh', everything else → 'en'.
 //   - Operator override persists to localStorage['apilog.lang'].

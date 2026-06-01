@@ -1,7 +1,7 @@
 /**
  * Adapter for the OpenAI Image Generation protocol (POST /v1/images/generations).
  *
- * Wire shape (verified against sub2api captures):
+ * Wire shape observed in reference captures:
  *   req.body = { model, prompt, size, n?, quality?, ... }
  *   resp.body = {
  *     created,
@@ -20,8 +20,8 @@
  *
  * The MediaBlock carries the raw base64 in `data_b64`; the renderer
  * decides whether to render inline as a `data:` URL or fetch from the
- * backend's /api/media/<trace_id>/<idx> endpoint once Phase K media
- * extraction lands for this path.
+ * backend's /api/media/<trace_id>/<idx> endpoint once media extraction
+ * supports this path.
  *
  * Invariants (shared across adapters):
  *   - Never throw — emit ErrorBlock and keep going.

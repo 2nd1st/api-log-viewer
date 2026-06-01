@@ -100,7 +100,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail + hairline bottom only.
+  /* Block frame: 4px left rail + hairline bottom only.
      Unknown blocks don't fit the named role/category buckets, so the
      rail defaults to --border-strong; the head row's role label and
      "unknown" kind chip carry identity. */
@@ -144,7 +144,7 @@
     font-size: var(--size-body);
   }
 
-  /* Type indicator "unknown" — lowercase outline chip per Phase 2B spec. */
+  /* Type indicator "unknown" — lowercase outline chip. */
   .kind {
     color: var(--fg-muted);
     font-size: var(--size-label);

@@ -1,7 +1,7 @@
 <script lang="ts">
   // Plugin list — Settings card body for the plugin management surface.
   //
-  // PHILOSOPHY (viewer/PHILOSOPHY.md):
+  // Plugin list constraints:
   //   - Viewer is A frontend, not THE frontend. Plugin config lives in
   //     backend YAML; this surface is a typed editor for that YAML +
   //     a runtime-override layer. The source pill (yaml vs override)
@@ -9,9 +9,8 @@
   //   - Single accent (--accent / teal-300) is reserved for active row /
   //     focus ring ONLY. The enabled-toggle on-state uses var(--fg) for
   //     high contrast, matching Settings.svelte's switch convention.
-  //   - All visible strings go through t(); the dictionary is owned by
-  //     Foundation A. Missing keys surface as the raw key string — that
-  //     is intentional during the parallel-phase window.
+  //   - All visible strings go through t(); missing keys surface as the raw
+  //     key string during development.
   //   - No new dependencies — repeatable rule rows + JSON fallback are
   //     hand-rolled inside PluginEditModal. Schema is hardcoded per
   //     plugin type, NOT derived from a JSON-Schema runtime.
@@ -25,7 +24,7 @@
   //   DELETE /api/config/plugins         → revert override, source: yaml
   //   GET    /api/plugins/types          → registered types + descriptions
   //
-  // HOT-RELOAD (W4.2 backend, 2026-05-31): PUT / PATCH / DELETE on
+  // HOT-RELOAD: PUT / PATCH / DELETE on
   // /api/config/plugins swap the live registry atomically. No restart
   // required; mutations take effect on the next request that flows
   // through the proxy.

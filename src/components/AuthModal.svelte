@@ -101,8 +101,7 @@
 </div>
 
 <style>
-  /* Phase 2 C density pass — Phase L canonical tokens.
-     Modal panel: surface, 1px border, radius-md, max-width 360px,
+  /* Modal panel: surface, 1px border, radius-md, max-width 360px,
      padding space-6. Backdrop: bg at 80% (var(--bg-overlay)). NO drop
      shadow. Title 13px sans var(--fg). Save button outline style. */
 

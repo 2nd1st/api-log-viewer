@@ -91,8 +91,7 @@
 </div>
 
 <style>
-  /* Phase 2B block frame — 4px left rail (tool category = --border-strong)
-     + hairline bottom only. Error variant keeps --err on the rail so
+  /* Block frame: 4px left rail + hairline bottom only. Error variant keeps --err on the rail so
      the row reads "this one failed" at a glance; --err is severity,
      not role, so the cross-cutting accent rule is preserved. */
   .block {

@@ -1,20 +1,19 @@
 <script lang="ts">
   // Plugin edit modal — add or edit one PluginInstance.
   //
-  // PHILOSOPHY (viewer/PHILOSOPHY.md):
+  // Plugin edit modal constraints:
   //   - The hardcoded form shapes for text-replace and text-append live
   //     in the viewer, NOT in a backend schema. v0.1 backend ships a
   //     minimal ConfigSchema ({fields: null}); the viewer is expected
   //     to know its first-party types and degrade to JSON-textarea for
-  //     anything else. This is the explicit boundary between "viewer
-  //     knows the operator's daily plugins" and "viewer is generic
-  //     enough to talk to any backend".
+  //     anything else. This is the boundary between first-party typed forms
+  //     and generic JSON editing.
   //   - No new dependencies — repeatable rule rows are a plain $state
   //     array; the JSON-fallback uses JSON.parse + try/catch at save.
   //   - Modal chrome (.modal-bg + .modal panel) mirrors AuthModal so the
   //     visual rhyme across the app stays tight.
   //
-  // CONFIG SHAPES (per type — Foundation B contract):
+  // CONFIG SHAPES (per type):
   //   text-replace:
   //     { routes: string[], up?: {match, replace}[], down?: {match, replace}[] }
   //   text-append:
