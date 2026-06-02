@@ -14,6 +14,20 @@ All notable changes to this project will be documented here. Format:
 
 ### Removed
 
+## [0.1.2] - 2026-06-02
+
+### Added
+- **Protocol-artifact `client_version` suppression** (commit
+  `9251f25`): Go's `net/http` stdlib emits
+  `Go-http-client/2.0` (HTTP/2) or `Go-http-client/1.1` regardless of
+  the calling app. Showing "2.0" next to "go-http-client" implies
+  operator identity signal where the parser only knows the protocol
+  version. `clientDisplay.ts` centralizes a noisy-version allowlist
+  behind `displayClientVersion(kind, version)` + `clientLabel`; wired
+  in Landing ACTIVE CLIENTS + TracesList client cell tooltip.
+  Audit-driven (v0.1.1 deploy workflow showed sub2api's 27/200
+  go-http-client rows all report version 2.0).
+
 ## [0.1.1] - 2026-06-02
 
 ### Added
