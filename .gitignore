@@ -1,5 +1,7 @@
 node_modules
 dist
+dist.zip
+.local-screenshots/
 .DS_Store
 *.log
 .vite

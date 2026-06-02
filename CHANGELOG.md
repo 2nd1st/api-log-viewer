@@ -7,6 +7,16 @@ All notable changes to this project will be documented here. Format:
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.1.1] - 2026-06-02
+
+### Added
 - **Storage retention surface** (matches api-log v0.1.1 backend):
   Landing STATUS strip's `data` cell gains a state badge (ok /
   warning / critical) when the backend has retention configured.
@@ -15,12 +25,6 @@ All notable changes to this project will be documented here. Format:
   `/api/config/retention`. Both knobs zero surfaces a "disabled"
   status row; 503 from a coord-less backend renders the card with
   a helpful hint. i18n strings for both languages.
-
-### Changed
-
-### Fixed
-
-### Removed
 
 ## [0.1.0] - 2026-05-31
 

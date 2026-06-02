@@ -401,7 +401,7 @@
   // VIEWER_VERSION is hardcoded — there's no vite define for it and
   // package.json isn't readable at runtime. Bump in sync with
   // package.json's "version" field when cutting a release.
-  const VIEWER_VERSION = '0.1.0';
+  const VIEWER_VERSION = '0.1.1';
   const HEALTHZ_URL = api('healthz');
 </script>
 
