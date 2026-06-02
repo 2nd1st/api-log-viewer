@@ -23,6 +23,7 @@
   // numeric values + dates are formatted but not translated.
 
   import { detectProtocol, type Protocol } from '../lib/adapters';
+  import { displayClientVersion } from '../lib/clientDisplay';
   import { humanBytes } from '../lib/format';
   import { t } from '../lib/i18n.svelte';
 
@@ -270,8 +271,10 @@
         m.set(kind, {
           kind,
           // Rows arrive newest→oldest, so the first row we see for a
-          // kind carries the most recent version string.
-          version: (r.client_version ?? '').trim() || '—',
+          // kind carries the most recent version string. clientDisplay
+          // suppresses versions that are protocol/runtime artifacts
+          // rather than app identity (e.g. go-http-client/2.0).
+          version: displayClientVersion(r.client_kind, r.client_version),
           count: 1,
         });
       }

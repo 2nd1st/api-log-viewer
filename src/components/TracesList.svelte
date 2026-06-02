@@ -92,6 +92,7 @@
   //     parent's FilterSidebar reads them reactively for <datalist>.
 
   import { shortId, shortTs, statusClass } from '../lib/format';
+  import { clientLabel } from '../lib/clientDisplay';
   import { t } from '../lib/i18n.svelte';
 
   interface Props {
@@ -388,11 +389,7 @@
         <td class="m">{row.model ?? '—'}</td>
         <td
           class="c"
-          title={row.client_kind
-            ? row.client_version
-              ? row.client_kind + ' ' + row.client_version
-              : row.client_kind
-            : ''}
+          title={clientLabel(row.client_kind, row.client_version)}
           >{row.client_kind ?? '—'}</td
         >
         <td class="sess" title={row.session_root_id ?? ''}
