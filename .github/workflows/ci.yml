@@ -6,6 +6,14 @@ on:
     tags: ["v*"]
   pull_request:
 
+# Opt every JS-based action into Node 24 ahead of GitHub's 2026-09-16
+# Node 20 EOL. checkout@v4, setup-node@v4, pnpm/action-setup@v4 still
+# ship as Node 20 bundles; this flag keeps them on a supported runtime
+# without forcing major-version churn through each action. Remove
+# once Node 24 becomes the runner default.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   check:
     runs-on: ubuntu-latest
