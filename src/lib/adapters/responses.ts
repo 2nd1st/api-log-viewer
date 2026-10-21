@@ -128,7 +128,12 @@ function adaptInputItem(item: Json, index: number): Block[] {
     return [makeUnknownBlock(source, item, 'non-object input item')];
   }
 
-  const itemType = String(item.type ?? '');
+  // Responses input messages may omit the outer `type` field.
+  const isImplicitMessage =
+    item.type === undefined &&
+    ['user', 'assistant', 'system', 'developer'].includes(item.role) &&
+    (typeof item.content === 'string' || Array.isArray(item.content));
+  const itemType = isImplicitMessage ? 'message' : String(item.type ?? '');
 
   try {
     switch (itemType) {
